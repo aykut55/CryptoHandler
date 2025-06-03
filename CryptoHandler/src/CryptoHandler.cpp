@@ -381,14 +381,18 @@ std::string CCryptoHandler::GetLastErrorString()
 int CCryptoHandler::EncryptFileWithCallback(ALG_ID algId, const std::string& inputFile,
     const std::string& outputFile, const std::string& password,
     StartCallback start, ProgressCallback progress,
-    CompletionCallback completion)
+    CompletionCallback completion, bool& isRunning)
 {
-    std::thread([=]() {
-        start();
+    isRunning = true; // hemen ata (main thread)
+
+    std::thread([=, &isRunning]() mutable {
+
+        if (start) start();
 
         std::ifstream in(inputFile, std::ios::binary | std::ios::ate);
         if (!in) {
-            completion(-1);
+            if (completion) completion(-1);
+            isRunning = false;
             return;
         }
 
@@ -407,7 +411,7 @@ int CCryptoHandler::EncryptFileWithCallback(ALG_ID algId, const std::string& inp
             size_t bytesRead = in.gcount();
             totalRead += bytesRead;
             inputBuffer.insert(inputBuffer.end(), buffer, buffer + bytesRead);
-            progress(totalRead, fileSize);
+            if (progress) progress(totalRead, fileSize);
         }
 
         in.close();
@@ -415,20 +419,23 @@ int CCryptoHandler::EncryptFileWithCallback(ALG_ID algId, const std::string& inp
         std::vector<BYTE> encryptedBuffer;
         int result = EncryptBuffer(algId, inputBuffer, encryptedBuffer, password);
         if (result < 0) {
-            completion(result);
+            if (completion) completion(result);
+            isRunning = false;
             return;
         }
 
         std::ofstream out(outputFile, std::ios::binary);
         if (!out) {
-            completion(-1);
+            if (completion) completion(-1);
+            isRunning = false;
             return;
         }
 
         out.write(reinterpret_cast<const char*>(encryptedBuffer.data()), encryptedBuffer.size());
         out.close();
 
-        completion(0);
+        if (completion) completion(0);
+        isRunning = false;
         }).detach();
 
         return 0;
@@ -437,14 +444,18 @@ int CCryptoHandler::EncryptFileWithCallback(ALG_ID algId, const std::string& inp
 int CCryptoHandler::DecryptFileWithCallback(ALG_ID algId, const std::string& inputFile,
     const std::string& outputFile, const std::string& password,
     StartCallback start, ProgressCallback progress,
-    CompletionCallback completion)
+    CompletionCallback completion, bool& isRunning)
 {
-    std::thread([=]() {
-        start();
+    isRunning = true; // hemen ata (main thread)
+
+    std::thread([=, &isRunning]() mutable {
+
+        if (start) start();
 
         std::ifstream in(inputFile, std::ios::binary | std::ios::ate);
         if (!in) {
-            completion(-1);
+            if (completion) completion(-1);
+            isRunning = false;
             return;
         }
 
@@ -463,7 +474,7 @@ int CCryptoHandler::DecryptFileWithCallback(ALG_ID algId, const std::string& inp
             size_t bytesRead = in.gcount();
             totalRead += bytesRead;
             encryptedBuffer.insert(encryptedBuffer.end(), buffer, buffer + bytesRead);
-            progress(totalRead, fileSize);
+            if (progress) progress(totalRead, fileSize);
         }
 
         in.close();
@@ -471,20 +482,23 @@ int CCryptoHandler::DecryptFileWithCallback(ALG_ID algId, const std::string& inp
         std::vector<BYTE> decryptedBuffer;
         int result = DecryptBuffer(algId, encryptedBuffer, decryptedBuffer, password);
         if (result < 0) {
-            completion(result);
+            if (completion) completion(result);
+            isRunning = false;
             return;
         }
 
         std::ofstream out(outputFile, std::ios::binary);
         if (!out) {
-            completion(-1);
+            if (completion) completion(-1);
+            isRunning = false;
             return;
         }
 
         out.write(reinterpret_cast<const char*>(decryptedBuffer.data()), decryptedBuffer.size());
         out.close();
 
-        completion(0);
+        if (completion) completion(0);
+        isRunning = false;
         }).detach();
 
         return 0;
@@ -492,14 +506,18 @@ int CCryptoHandler::DecryptFileWithCallback(ALG_ID algId, const std::string& inp
 
 int CCryptoHandler::HashFileWithCallback(ALG_ID algId, const std::string& inputFile, std::string& outputHash,
     StartCallback start, ProgressCallback progress,
-    CompletionCallback completion)
+    CompletionCallback completion, bool& isRunning)
 {
-    std::thread([=, &outputHash]() {
-        start();
+    isRunning = true; // hemen ata (main thread)
+
+    std::thread([=, &isRunning]() mutable {
+
+        if (start) start();
 
         std::ifstream in(inputFile, std::ios::binary | std::ios::ate);
         if (!in) {
-            completion(-1);
+            if (completion) completion(-1);
+            isRunning = false;
             return;
         }
 
@@ -518,13 +536,14 @@ int CCryptoHandler::HashFileWithCallback(ALG_ID algId, const std::string& inputF
             size_t bytesRead = in.gcount();
             totalRead += bytesRead;
             inputBuffer.insert(inputBuffer.end(), buffer, buffer + bytesRead);
-            progress(totalRead, fileSize);
+            if (progress) progress(totalRead, fileSize);
         }
 
         in.close();
 
         int result = HashBuffer(algId, inputBuffer, outputHash);
-        completion(result);
+        if (completion) completion(result);
+        isRunning = false;
 
         }).detach();
 

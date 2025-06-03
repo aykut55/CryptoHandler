@@ -155,6 +155,7 @@ void FileEncryptionDecryptionHashExample(CCryptoHandler& handler, ALG_ID encAlgI
 void FileEncryptionDecryptionHashAsenkronExample(CCryptoHandler& handler, ALG_ID encAlgId, ALG_ID hashAlgId, const std::string& password,
     const std::string& inputFile, const std::string& encryptedFile, const std::string& decryptedFile)
 {
+    bool isRunning = false;
 
     handler.EncryptFileWithCallback(encAlgId, inputFile, encryptedFile, password,
         []() { 
@@ -169,10 +170,19 @@ void FileEncryptionDecryptionHashAsenkronExample(CCryptoHandler& handler, ALG_ID
                 std::cout << "\nEncryption completed successfully.\n";
             else
                 std::cerr << "\nEncryption failed!\n";
-        }
+        },
+        isRunning
     );
 
-    //std::this_thread::sleep_for(std::chrono::seconds(1000));
+    // Wait for operation to complete
+    while (isRunning) { //handler.IsRunning()
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    std::cout << std::endl;
+    std::cout << std::endl;
+
+    isRunning = false;
 
     handler.DecryptFileWithCallback(
         encAlgId, encryptedFile, decryptedFile, password,
@@ -183,11 +193,22 @@ void FileEncryptionDecryptionHashAsenkronExample(CCryptoHandler& handler, ALG_ID
         },
         [](int result) {
             if (result == 0)
-                std::cout << "\Decryption completed successfully.\n";
+                std::cout << "\nDecryption completed successfully.\n";
             else
-                std::cerr << "\Decryption failed!\n";
-        }
+                std::cerr << "\nDecryption failed!\n";
+        },
+        isRunning
     );
+
+    // Wait for operation to complete
+    while (isRunning) { //handler.IsRunning()
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    std::cout << std::endl;
+    std::cout << std::endl;
+
+    isRunning = false;
 
     std::string hashOutput;
 
@@ -202,10 +223,20 @@ void FileEncryptionDecryptionHashAsenkronExample(CCryptoHandler& handler, ALG_ID
                 std::cout << "\nHash completed successfully: " << hashOutput << "\n";
             else
                 std::cerr << "\nHash failed!\n";
-        }
+        },
+        isRunning
     );
 
-    std::this_thread::sleep_for(std::chrono::seconds(5)); // Örnek bekleme (gerçek uygulamada daha iyi bir yöntem tercih edin)
+    // Wait for operation to complete
+    while (isRunning) { //handler.IsRunning()
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    std::cout << std::endl;
+    std::cout << std::endl;
+
+
+
 
     std::string originalHash, decryptedHash;
 
@@ -228,6 +259,12 @@ void FileEncryptionDecryptionHashAsenkronExample(CCryptoHandler& handler, ALG_ID
     else {
         std::cerr << "Decrypted file does not match original!" << std::endl;
     }
+
+    std::cout << std::endl;
+    std::cout << std::endl;
+
+    std::cout << std::endl;
+    std::cout << std::endl;
 }
 
 int main()
