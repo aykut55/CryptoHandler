@@ -377,3 +377,156 @@ std::string CCryptoHandler::GetLastErrorString()
 
     return message;
 }
+
+int CCryptoHandler::EncryptFileWithCallback(ALG_ID algId, const std::string& inputFile,
+    const std::string& outputFile, const std::string& password,
+    StartCallback start, ProgressCallback progress,
+    CompletionCallback completion)
+{
+    std::thread([=]() {
+        start();
+
+        std::ifstream in(inputFile, std::ios::binary | std::ios::ate);
+        if (!in) {
+            completion(-1);
+            return;
+        }
+
+        size_t fileSize = in.tellg();
+        in.seekg(0);
+
+        const size_t chunkSize = 4096;
+        std::vector<BYTE> inputBuffer;
+        inputBuffer.reserve(fileSize);
+
+        size_t totalRead = 0;
+        BYTE buffer[chunkSize];
+
+        while (in) {
+            in.read(reinterpret_cast<char*>(buffer), chunkSize);
+            size_t bytesRead = in.gcount();
+            totalRead += bytesRead;
+            inputBuffer.insert(inputBuffer.end(), buffer, buffer + bytesRead);
+            progress(totalRead, fileSize);
+        }
+
+        in.close();
+
+        std::vector<BYTE> encryptedBuffer;
+        int result = EncryptBuffer(algId, inputBuffer, encryptedBuffer, password);
+        if (result < 0) {
+            completion(result);
+            return;
+        }
+
+        std::ofstream out(outputFile, std::ios::binary);
+        if (!out) {
+            completion(-1);
+            return;
+        }
+
+        out.write(reinterpret_cast<const char*>(encryptedBuffer.data()), encryptedBuffer.size());
+        out.close();
+
+        completion(0);
+        }).detach();
+
+        return 0;
+}
+
+int CCryptoHandler::DecryptFileWithCallback(ALG_ID algId, const std::string& inputFile,
+    const std::string& outputFile, const std::string& password,
+    StartCallback start, ProgressCallback progress,
+    CompletionCallback completion)
+{
+    std::thread([=]() {
+        start();
+
+        std::ifstream in(inputFile, std::ios::binary | std::ios::ate);
+        if (!in) {
+            completion(-1);
+            return;
+        }
+
+        size_t fileSize = in.tellg();
+        in.seekg(0);
+
+        const size_t chunkSize = 4096;
+        std::vector<BYTE> encryptedBuffer;
+        encryptedBuffer.reserve(fileSize);
+
+        size_t totalRead = 0;
+        BYTE buffer[chunkSize];
+
+        while (in) {
+            in.read(reinterpret_cast<char*>(buffer), chunkSize);
+            size_t bytesRead = in.gcount();
+            totalRead += bytesRead;
+            encryptedBuffer.insert(encryptedBuffer.end(), buffer, buffer + bytesRead);
+            progress(totalRead, fileSize);
+        }
+
+        in.close();
+
+        std::vector<BYTE> decryptedBuffer;
+        int result = DecryptBuffer(algId, encryptedBuffer, decryptedBuffer, password);
+        if (result < 0) {
+            completion(result);
+            return;
+        }
+
+        std::ofstream out(outputFile, std::ios::binary);
+        if (!out) {
+            completion(-1);
+            return;
+        }
+
+        out.write(reinterpret_cast<const char*>(decryptedBuffer.data()), decryptedBuffer.size());
+        out.close();
+
+        completion(0);
+        }).detach();
+
+        return 0;
+}
+
+int CCryptoHandler::HashFileWithCallback(ALG_ID algId, const std::string& inputFile, std::string& outputHash,
+    StartCallback start, ProgressCallback progress,
+    CompletionCallback completion)
+{
+    std::thread([=, &outputHash]() {
+        start();
+
+        std::ifstream in(inputFile, std::ios::binary | std::ios::ate);
+        if (!in) {
+            completion(-1);
+            return;
+        }
+
+        size_t fileSize = in.tellg();
+        in.seekg(0);
+
+        const size_t chunkSize = 4096;
+        std::vector<BYTE> inputBuffer;
+        inputBuffer.reserve(fileSize);
+
+        size_t totalRead = 0;
+        BYTE buffer[chunkSize];
+
+        while (in) {
+            in.read(reinterpret_cast<char*>(buffer), chunkSize);
+            size_t bytesRead = in.gcount();
+            totalRead += bytesRead;
+            inputBuffer.insert(inputBuffer.end(), buffer, buffer + bytesRead);
+            progress(totalRead, fileSize);
+        }
+
+        in.close();
+
+        int result = HashBuffer(algId, inputBuffer, outputHash);
+        completion(result);
+
+        }).detach();
+
+        return 0;
+}

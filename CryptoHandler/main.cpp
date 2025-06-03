@@ -152,6 +152,83 @@ void FileEncryptionDecryptionHashExample(CCryptoHandler& handler, ALG_ID encAlgI
     }
 }
 
+void FileEncryptionDecryptionHashAsenkronExample(CCryptoHandler& handler, ALG_ID encAlgId, ALG_ID hashAlgId, const std::string& password,
+    const std::string& inputFile, const std::string& encryptedFile, const std::string& decryptedFile)
+{
+
+    handler.EncryptFileWithCallback(encAlgId, inputFile, encryptedFile, password,
+        []() { 
+            std::cout << "Encryption started!\n"; },
+
+        [](size_t processed, size_t total) {
+            std::cout << "Encrypted: " << processed << " / " << total << " bytes\r";
+        },
+
+        [](int result) {
+            if (result == 0)
+                std::cout << "\nEncryption completed successfully.\n";
+            else
+                std::cerr << "\nEncryption failed!\n";
+        }
+    );
+
+    //std::this_thread::sleep_for(std::chrono::seconds(1000));
+
+    handler.DecryptFileWithCallback(
+        encAlgId, encryptedFile, decryptedFile, password,
+        []()
+        { std::cout << "Decryption started!\n"; },
+        [](size_t processed, size_t total) {
+            std::cout << "Decrypted: " << processed << " / " << total << " bytes\r";
+        },
+        [](int result) {
+            if (result == 0)
+                std::cout << "\Decryption completed successfully.\n";
+            else
+                std::cerr << "\Decryption failed!\n";
+        }
+    );
+
+    std::string hashOutput;
+
+    handler.HashFileWithCallback(
+        hashAlgId, inputFile, hashOutput,
+        []() { std::cout << "Hashing started!\n"; },
+        [](size_t processed, size_t total) {
+            std::cout << "Hashed: " << processed << " / " << total << " bytes\r";
+        },
+        [&](int result) {
+            if (result == 0)
+                std::cout << "\nHash completed successfully: " << hashOutput << "\n";
+            else
+                std::cerr << "\nHash failed!\n";
+        }
+    );
+
+    std::this_thread::sleep_for(std::chrono::seconds(5)); // Örnek bekleme (gerçek uygulamada daha iyi bir yöntem tercih edin)
+
+    std::string originalHash, decryptedHash;
+
+    if (handler.HashFile(hashAlgId, inputFile, originalHash) != 0) {
+        std::cerr << "Original file hashing failed." << std::endl;
+        return;
+    }
+
+    if (handler.HashFile(hashAlgId, decryptedFile, decryptedHash) != 0) {
+        std::cerr << "Decrypted file hashing failed." << std::endl;
+        return;
+    }
+
+    std::cout << "Original file SHA-256 : " << originalHash << std::endl;
+    std::cout << "Decrypted file SHA-256: " << decryptedHash << std::endl;
+
+    if (originalHash == decryptedHash) {
+        std::cout << "Decrypted file matches original!" << std::endl;
+    }
+    else {
+        std::cerr << "Decrypted file does not match original!" << std::endl;
+    }
+}
 
 int main()
 {
@@ -331,8 +408,17 @@ int main()
     std::cout << std::endl;
 
     inputFileName = "../input_text.txt";
-    inputFileName = "../input_binary.rar"; 
     FileEncryptionDecryptionHashExample(cryptoHandler, CALG_AES_256, CALG_SHA_256, password, inputFileName, encryptedFileName, decryptedFileName);
     std::cout << std::endl;
 
+    std::cout << std::endl;
+    std::cout << "========================================================" << std::endl;
+    std::cout << "FileEncryptionDecryptionHashAsenkronExample" << std::endl;
+    std::cout << "========================================================" << std::endl;
+    std::cout << std::endl;
+
+    inputFileName = "../input_binary.rar";
+    inputFileName = "../input_text.txt";
+    FileEncryptionDecryptionHashAsenkronExample(cryptoHandler, CALG_AES_256, CALG_SHA_256, password, inputFileName, encryptedFileName, decryptedFileName);
+    std::cout << std::endl;
 }

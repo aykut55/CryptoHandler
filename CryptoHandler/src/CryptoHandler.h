@@ -13,8 +13,13 @@
 #include <iomanip>
 #include <sstream>
 #include <fstream>
+#include <functional>
 
 #pragma comment(lib, "crypt32.lib")
+
+using StartCallback = std::function<void()>;
+using ProgressCallback = std::function<void(size_t bytesProcessed, size_t totalBytes)>;
+using CompletionCallback = std::function<void(int resultCode)>;
 
 class CCryptoHandler
 {
@@ -31,6 +36,16 @@ public:
         AlgorithmType type;
         std::string name;
     };
+
+    // Asenkron File operations
+    int EncryptFileWithCallback(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password,
+        StartCallback start, ProgressCallback progress,
+        CompletionCallback completion);
+    int DecryptFileWithCallback(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password,
+        StartCallback start, ProgressCallback progress,
+        CompletionCallback completion);
+    int HashFileWithCallback(ALG_ID algId, const std::string& inputFile, std::string& outputHash, StartCallback start, ProgressCallback progress,
+        CompletionCallback completion);
 
     // File operations
     int EncryptFile(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password);
