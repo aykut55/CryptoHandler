@@ -14,6 +14,8 @@
 #include <sstream>
 #include <fstream>
 
+#pragma comment(lib, "crypt32.lib")
+
 class CCryptoHandler
 {
 public:
