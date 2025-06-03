@@ -43,9 +43,9 @@ public:
     int HashString(ALG_ID algId, const std::string& input, std::string& outputHash);
 
     // Buffer operations
-    int EncryptBuffer(ALG_ID algId, const char* input, char* output, const std::string& password);
-    int DecryptBuffer(ALG_ID algId, const char* input, char* output, const std::string& password);
-    int HashBuffer(ALG_ID algId, const char* input, std::string& outputHash);
+    int EncryptBuffer(ALG_ID algId, const std::vector<BYTE>& input, std::vector<BYTE>& encryptedOutput, const std::string& password);
+    int DecryptBuffer(ALG_ID algId, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput, const std::string& password);
+    int HashBuffer(ALG_ID algId, const std::vector<BYTE>& input, std::string& outputHash);
 
     // Utility functions
     std::string Base64Encode(const std::string& input);

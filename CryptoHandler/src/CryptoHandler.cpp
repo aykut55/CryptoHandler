@@ -1,4 +1,5 @@
-#include "CryptoHandler.h"
+﻿#include "CryptoHandler.h"
+#include <iostream>
 
 namespace {
     const std::map<ALG_ID, CCryptoHandler::AlgorithmInfo> SUPPORTED_ALGORITHMS = {
@@ -126,26 +127,138 @@ int CCryptoHandler::HashString(ALG_ID algId, const std::string& input, std::stri
     return 0;
 }
 
-int CCryptoHandler::EncryptBuffer(ALG_ID algId, const char* input, char* output, const std::string& password)
+int CCryptoHandler::EncryptBuffer(ALG_ID algId, const std::vector<BYTE>& input, std::vector<BYTE>& encryptedOutput, const std::string& password)
 {
     m_isRunning = true;
-    // Implementation will be added in next steps
+
+    HCRYPTPROV hProv = GetCryptProvider();
+    if (!hProv) {
+        m_isRunning = false;
+        return -1;
+    }
+
+    HCRYPTKEY hKey = GenerateKey(algId, hProv, password);
+    if (!hKey) {
+        CryptReleaseContext(hProv, 0);
+        m_isRunning = false;
+        return -1;
+    }
+
+    DWORD inputLen = static_cast<DWORD>(input.size());
+    DWORD encryptedLen = inputLen;
+
+    // Gerekli buffer boyutunu öğren
+    if (!CryptEncrypt(hKey, 0, TRUE, 0, NULL, &encryptedLen, 0)) {
+        CryptDestroyKey(hKey);
+        CryptReleaseContext(hProv, 0);
+        m_isRunning = false;
+        return -1;
+    }
+
+    encryptedOutput.resize(encryptedLen);
+    memcpy(encryptedOutput.data(), input.data(), inputLen);
+
+    if (!CryptEncrypt(hKey, 0, TRUE, 0, encryptedOutput.data(), &inputLen, encryptedLen)) {
+        CryptDestroyKey(hKey);
+        CryptReleaseContext(hProv, 0);
+        m_isRunning = false;
+        return -1;
+    }
+
+    CryptDestroyKey(hKey);
+    CryptReleaseContext(hProv, 0);
+
     m_isRunning = false;
-    return 0;
+    return encryptedLen;
 }
 
-int CCryptoHandler::DecryptBuffer(ALG_ID algId, const char* input, char* output, const std::string& password)
+int CCryptoHandler::DecryptBuffer(ALG_ID algId, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput, const std::string& password)
 {
     m_isRunning = true;
-    // Implementation will be added in next steps
+
+    HCRYPTPROV hProv = GetCryptProvider();
+    if (!hProv) {
+        m_isRunning = false;
+        return -1;
+    }
+
+    HCRYPTKEY hKey = GenerateKey(algId, hProv, password);
+    if (!hKey) {
+        CryptReleaseContext(hProv, 0);
+        m_isRunning = false;
+        return -1;
+    }
+
+    std::vector<BYTE> buffer(encryptedInput);
+    DWORD bufferLen = static_cast<DWORD>(buffer.size());
+
+    if (!CryptDecrypt(hKey, 0, TRUE, 0, buffer.data(), &bufferLen)) {
+        CryptDestroyKey(hKey);
+        CryptReleaseContext(hProv, 0);
+        m_isRunning = false;
+        return -1;
+    }
+
+    buffer.resize(bufferLen);
+    decryptedOutput = std::move(buffer);
+
+    CryptDestroyKey(hKey);
+    CryptReleaseContext(hProv, 0);
+
     m_isRunning = false;
-    return 0;
+    return bufferLen;
 }
 
-int CCryptoHandler::HashBuffer(ALG_ID algId, const char* input, std::string& outputHash)
+int CCryptoHandler::HashBuffer(ALG_ID algId, const std::vector<BYTE>& input, std::string& outputHash)
 {
     m_isRunning = true;
-    // Implementation will be added in next steps
+
+    HCRYPTPROV hProv = GetCryptProvider();
+    if (!hProv) {
+        m_isRunning = false;
+        return -1;
+    }
+
+    HCRYPTHASH hHash = 0;
+    if (!CryptCreateHash(hProv, algId, 0, 0, &hHash)) {
+        CryptReleaseContext(hProv, 0);
+        m_isRunning = false;
+        return -1;
+    }
+
+    if (!CryptHashData(hHash, input.data(), static_cast<DWORD>(input.size()), 0)) {
+        CryptDestroyHash(hHash);
+        CryptReleaseContext(hProv, 0);
+        m_isRunning = false;
+        return -1;
+    }
+
+    DWORD hashLen = 0;
+    DWORD hashLenSize = sizeof(DWORD);
+    if (!CryptGetHashParam(hHash, HP_HASHSIZE, reinterpret_cast<BYTE*>(&hashLen), &hashLenSize, 0)) {
+        CryptDestroyHash(hHash);
+        CryptReleaseContext(hProv, 0);
+        m_isRunning = false;
+        return -1;
+    }
+
+    std::vector<BYTE> hashValue(hashLen);
+    if (!CryptGetHashParam(hHash, HP_HASHVAL, hashValue.data(), &hashLen, 0)) {
+        CryptDestroyHash(hHash);
+        CryptReleaseContext(hProv, 0);
+        m_isRunning = false;
+        return -1;
+    }
+
+    std::ostringstream oss;
+    for (BYTE b : hashValue) {
+        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(b);
+    }
+    outputHash = oss.str();
+
+    CryptDestroyHash(hHash);
+    CryptReleaseContext(hProv, 0);
+
     m_isRunning = false;
     return 0;
 }

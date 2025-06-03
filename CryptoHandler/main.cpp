@@ -1,7 +1,62 @@
-
-
 #include <iostream>
+#include <cstring>
 #include "src/CryptoHandler.h"
+
+void EncryptDecryptBufferExample(CCryptoHandler& handler, ALG_ID algId, const std::vector<BYTE>& inputBuffer, const std::string& password)
+{
+    std::vector<BYTE> encryptedBuffer;
+    std::vector<BYTE> decryptedBuffer;
+
+    std::cout << "Encryption started. inputBuffer size: " << inputBuffer.size() << " bytes." << std::endl;
+    std::cout << std::endl;
+
+    if (handler.EncryptBuffer(algId, inputBuffer, encryptedBuffer, password) < 0) {
+        std::cerr << "Encryption failed: " << handler.GetLastErrorString() << std::endl;
+        return;
+    }
+
+    std::cout << "Encryption succeeded. Encrypted size: " << encryptedBuffer.size() << " bytes." << std::endl;
+    std::cout << std::endl;
+
+    std::cout << "Decryption started. Buffer size: " << encryptedBuffer.size() << " bytes." << std::endl;
+    std::cout << std::endl;
+
+    if (handler.DecryptBuffer(algId, encryptedBuffer, decryptedBuffer, password) < 0) {
+        std::cerr << "Decryption failed: " << handler.GetLastErrorString() << std::endl;
+        return;
+    }
+
+    std::cout << "Decryption succeeded. Decrypted size: " << decryptedBuffer.size() << " bytes." << std::endl;
+    std::cout << std::endl;
+
+    if (inputBuffer == decryptedBuffer) {
+        std::cout << "Success: Decrypted buffer matches the original input." << std::endl;
+        std::cout << std::endl;
+    }
+    else {
+        std::cerr << "Error: Decrypted buffer does not match the original input." << std::endl;
+        std::cout << std::endl;
+    }
+
+    std::string inputText(inputBuffer.begin(), inputBuffer.end());
+    std::cout << "Input     : " << inputText << std::endl;
+    std::string outputText(decryptedBuffer.begin(), decryptedBuffer.end());
+    std::cout << "Output    : " << inputText << std::endl;
+    std::cout << std::endl;
+}
+
+void HashBufferExample(CCryptoHandler& handler, ALG_ID algId, const std::vector<BYTE>& buffer)
+{
+    std::string hashOutput;
+
+    if (handler.HashBuffer(algId, buffer, hashOutput) != 0) {
+        std::cerr << "Hashing failed: " << handler.GetLastErrorString() << std::endl;
+        return;
+    }
+
+    std::cout << "Hash (hex): " << hashOutput << std::endl;
+}
+
 
 int main()
 {
@@ -18,7 +73,7 @@ int main()
     std::string encryptedString = "";
     std::string decryptedString = "";
 
-    char inputBuffer[4096] = { "Due to technical issues, the email system is having troubles sending to some providers" };
+    char inputBuffer[] = { "Due to technical issues, the email system is having troubles sending to some providers" };
     char encryptedBuffer[4096];
     char decryptedBuffer[4096];
 
@@ -28,6 +83,7 @@ int main()
 
     int result;
 
+#if 0
     // --------------------------------------------------------------------
     {
         // File encryption example
@@ -149,5 +205,14 @@ int main()
 
         std::cout << std::endl;
     }
+#endif
+
+    const std::string inputText = "Due to technical issues, the email system is having troubles sending to some providers";
+    std::vector<BYTE> inputBuffer1(inputText.begin(), inputText.end());
+
+    std::cout << std::endl;
+    EncryptDecryptBufferExample(cryptoHandler, CALG_AES_256, inputBuffer1, password);
+    HashBufferExample(cryptoHandler, CALG_SHA_256, inputBuffer1);
+    std::cout << std::endl;
 
 }
