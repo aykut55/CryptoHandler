@@ -1,8 +1,8 @@
-#include <iostream>
+﻿#include <iostream>
 #include <cstring>
 #include "src/CryptoHandler.h"
 
-void EncryptDecryptBufferExample(CCryptoHandler& handler, ALG_ID algId, const std::vector<BYTE>& inputBuffer, const std::string& password)
+void EncryptDecryptHashBufferExample(CCryptoHandler& handler, ALG_ID encAlgId, ALG_ID hashAlgId, const std::vector<BYTE>& inputBuffer, const std::string& password)
 {
     std::vector<BYTE> encryptedBuffer;
     std::vector<BYTE> decryptedBuffer;
@@ -10,7 +10,7 @@ void EncryptDecryptBufferExample(CCryptoHandler& handler, ALG_ID algId, const st
     std::cout << "Encryption started. inputBuffer size: " << inputBuffer.size() << " bytes." << std::endl;
     std::cout << std::endl;
 
-    if (handler.EncryptBuffer(algId, inputBuffer, encryptedBuffer, password) < 0) {
+    if (handler.EncryptBuffer(encAlgId, inputBuffer, encryptedBuffer, password) < 0) {
         std::cerr << "Encryption failed: " << handler.GetLastErrorString() << std::endl;
         return;
     }
@@ -21,7 +21,7 @@ void EncryptDecryptBufferExample(CCryptoHandler& handler, ALG_ID algId, const st
     std::cout << "Decryption started. Buffer size: " << encryptedBuffer.size() << " bytes." << std::endl;
     std::cout << std::endl;
 
-    if (handler.DecryptBuffer(algId, encryptedBuffer, decryptedBuffer, password) < 0) {
+    if (handler.DecryptBuffer(encAlgId, encryptedBuffer, decryptedBuffer, password) < 0) {
         std::cerr << "Decryption failed: " << handler.GetLastErrorString() << std::endl;
         return;
     }
@@ -38,15 +38,24 @@ void EncryptDecryptBufferExample(CCryptoHandler& handler, ALG_ID algId, const st
         std::cout << std::endl;
     }
 
+    std::string hashOutput;
+
+    if (handler.HashBuffer(hashAlgId, inputBuffer, hashOutput) != 0) {
+        std::cerr << "Hashing failed: " << handler.GetLastErrorString() << std::endl;
+        return;
+    }
+
     std::string inputText(inputBuffer.begin(), inputBuffer.end());
-    std::cout << "Input     : " << inputText << std::endl;
+    std::cout << "Input       : " << inputText << std::endl;
     std::string outputText(decryptedBuffer.begin(), decryptedBuffer.end());
-    std::cout << "Output    : " << inputText << std::endl;
+    std::cout << "Output      : " << inputText << std::endl;
+    std::cout << "SHA-256 Hash: " << hashOutput << std::endl;
     std::cout << std::endl;
 }
 
 void HashBufferExample(CCryptoHandler& handler, ALG_ID algId, const std::vector<BYTE>& buffer)
 {
+    /*
     std::string hashOutput;
 
     if (handler.HashBuffer(algId, buffer, hashOutput) != 0) {
@@ -54,7 +63,93 @@ void HashBufferExample(CCryptoHandler& handler, ALG_ID algId, const std::vector<
         return;
     }
 
-    std::cout << "Hash (hex): " << hashOutput << std::endl;
+    std::cout << "SHA-256 Hash: " << hashOutput << std::endl;
+    */
+}
+
+
+void StringEncryptionDecryptionHashExample(CCryptoHandler& handler, ALG_ID encAlgId, ALG_ID hashAlgId, const std::string& inputText, const std::string& password)
+{
+    std::string encryptedText, decryptedText, hash;
+
+    // Encrypt
+    if (handler.EncryptString(encAlgId, password, inputText, encryptedText) != 0) {
+        std::cerr << "String encryption failed: " << handler.GetLastErrorString() << std::endl;
+        return;
+    }
+
+    std::cout << "Encrypted (Base64): " << encryptedText << std::endl;
+    std::cout << std::endl;
+
+    // Decrypt
+    if (handler.DecryptString(encAlgId, password, encryptedText, decryptedText) != 0) {
+        std::cerr << "String decryption failed: " << handler.GetLastErrorString() << std::endl;
+        return;
+    }
+
+    std::cout << "Decrypted: " << decryptedText << std::endl;
+    std::cout << std::endl;
+
+    // Check if original matches decrypted
+    if (inputText == decryptedText) {
+        std::cout << "Decrypted text matches original!" << std::endl;
+        std::cout << std::endl;
+    }
+    else {
+        std::cerr << "Decrypted text does not match original!" << std::endl;
+        std::cout << std::endl;
+    }
+
+    // Hash
+    if (handler.HashString(hashAlgId, inputText, hash) != 0) {
+        std::cerr << "String hashing failed: " << handler.GetLastErrorString() << std::endl;
+        return;
+    }
+
+    std::cout << "Input       : " << inputText << std::endl;
+    std::cout << "Output      : " << inputText << std::endl;
+    std::cout << "SHA-256 Hash: " << hash << std::endl;
+    std::cout << std::endl;
+}
+
+void FileEncryptionDecryptionHashExample(CCryptoHandler& handler, ALG_ID encAlgId, ALG_ID hashAlgId, const std::string& password,
+    const std::string& inputFile, const std::string& encryptedFile, const std::string& decryptedFile)
+{
+    if (handler.EncryptFile(encAlgId, inputFile, encryptedFile, password) != 0) {
+        std::cerr << "File encryption failed: " << handler.GetLastErrorString() << std::endl;
+        return;
+    }
+
+    std::cout << "File encryption succeeded." << std::endl;
+
+    if (handler.DecryptFile(encAlgId, encryptedFile, decryptedFile, password) != 0) {
+        std::cerr << "File decryption failed: " << handler.GetLastErrorString() << std::endl;
+        return;
+    }
+
+    std::cout << "File decryption succeeded." << std::endl;
+
+    std::string originalHash, decryptedHash;
+
+    if (handler.HashFile(hashAlgId, inputFile, originalHash) != 0) {
+        std::cerr << "Original file hashing failed." << std::endl;
+        return;
+    }
+
+    if (handler.HashFile(hashAlgId, decryptedFile, decryptedHash) != 0) {
+        std::cerr << "Decrypted file hashing failed." << std::endl;
+        return;
+    }
+
+    std::cout << "Original file SHA-256 : " << originalHash << std::endl;
+    std::cout << "Decrypted file SHA-256: " << decryptedHash << std::endl;
+
+    if (originalHash == decryptedHash) {
+        std::cout << "Decrypted file matches original!" << std::endl;
+    }
+    else {
+        std::cerr << "Decrypted file does not match original!" << std::endl;
+    }
 }
 
 
@@ -80,6 +175,8 @@ int main()
     std::string hashFile = "";
     std::string hashString = "";
     std::string hashBuffer = "";
+
+    std::string inputText = "";
 
     int result;
 
@@ -207,12 +304,35 @@ int main()
     }
 #endif
 
-    const std::string inputText = "Due to technical issues, the email system is having troubles sending to some providers";
+    std::cout << std::endl;
+    std::cout << "========================================================" << std::endl;
+    std::cout << "EncryptDecryptHashBufferExample" << std::endl;
+    std::cout << "========================================================" << std::endl;
+    std::cout << std::endl;
+
+    inputText = "Due to technical issues, the email system is having troubles sending to some providers";
     std::vector<BYTE> inputBuffer1(inputText.begin(), inputText.end());
+    EncryptDecryptHashBufferExample(cryptoHandler, CALG_AES_256, CALG_SHA_256, inputBuffer1, password);
 
     std::cout << std::endl;
-    EncryptDecryptBufferExample(cryptoHandler, CALG_AES_256, inputBuffer1, password);
-    HashBufferExample(cryptoHandler, CALG_SHA_256, inputBuffer1);
+    std::cout << "========================================================" << std::endl;
+    std::cout << "StringEncryptionDecryptionHashExample" << std::endl;
+    std::cout << "========================================================" << std::endl;
+    std::cout << std::endl;
+
+    inputString = "This is an input string";
+    StringEncryptionDecryptionHashExample(cryptoHandler, CALG_AES_256, CALG_SHA_256, inputString, password);
+    std::cout << std::endl;
+
+    std::cout << std::endl;
+    std::cout << "========================================================" << std::endl;
+    std::cout << "FileEncryptionDecryptionHashExample" << std::endl;
+    std::cout << "========================================================" << std::endl;
+    std::cout << std::endl;
+
+    inputFileName = "../input_text.txt";
+    inputFileName = "../input_binary.rar"; 
+    FileEncryptionDecryptionHashExample(cryptoHandler, CALG_AES_256, CALG_SHA_256, password, inputFileName, encryptedFileName, decryptedFileName);
     std::cout << std::endl;
 
 }

@@ -81,50 +81,101 @@ bool CCryptoHandler::ValidateAlgorithm(ALG_ID algId, AlgorithmType expectedType)
 // Placeholder implementations for the main methods
 int CCryptoHandler::EncryptFile(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password)
 {
-    m_isRunning = true;
-    // Implementation will be added in next steps
-    m_isRunning = false;
+    std::ifstream in(inputFile, std::ios::binary);
+    if (!in) return -1;
+
+    std::vector<BYTE> inputBuffer((std::istreambuf_iterator<char>(in)), {});
+    in.close();
+
+    std::vector<BYTE> encryptedBuffer;
+    int result = EncryptBuffer(algId, inputBuffer, encryptedBuffer, password);
+    if (result < 0) {
+        return result;
+    }
+
+    std::ofstream out(outputFile, std::ios::binary);
+    if (!out) return -1;
+
+    out.write(reinterpret_cast<const char*>(encryptedBuffer.data()), encryptedBuffer.size());
+    out.close();
+
     return 0;
 }
 
 int CCryptoHandler::DecryptFile(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password)
 {
-    m_isRunning = true;
-    // Implementation will be added in next steps
-    m_isRunning = false;
+    std::ifstream in(inputFile, std::ios::binary);
+    if (!in) return -1;
+
+    std::vector<BYTE> encryptedBuffer((std::istreambuf_iterator<char>(in)), {});
+    in.close();
+
+    std::vector<BYTE> decryptedBuffer;
+    int result = DecryptBuffer(algId, encryptedBuffer, decryptedBuffer, password);
+    if (result < 0) {
+        return result;
+    }
+
+    std::ofstream out(outputFile, std::ios::binary);
+    if (!out) return -1;
+
+    out.write(reinterpret_cast<const char*>(decryptedBuffer.data()), decryptedBuffer.size());
+    out.close();
+
     return 0;
 }
 
 int CCryptoHandler::HashFile(ALG_ID algId, const std::string& inputFile, std::string& outputHash)
 {
-    m_isRunning = true;
-    // Implementation will be added in next steps
-    m_isRunning = false;
-    return 0;
+    std::ifstream in(inputFile, std::ios::binary);
+    if (!in) return -1;
+
+    std::vector<BYTE> inputBuffer((std::istreambuf_iterator<char>(in)), {});
+    in.close();
+
+    return HashBuffer(algId, inputBuffer, outputHash);
 }
 
 int CCryptoHandler::EncryptString(ALG_ID algId, const std::string& password, const std::string& input, std::string& output)
 {
-    m_isRunning = true;
-    // Implementation will be added in next steps
-    m_isRunning = false;
+    std::vector<BYTE> inputBuffer(input.begin(), input.end());
+    std::vector<BYTE> encryptedBuffer;
+
+    int result = EncryptBuffer(algId, inputBuffer, encryptedBuffer, password);
+    if (result < 0) {
+        return result;
+    }
+
+    // Base64Encode işlemi BYTE vector üzerinden yapıldı
+    output = Base64Encode(encryptedBuffer);
+
     return 0;
 }
 
 int CCryptoHandler::DecryptString(ALG_ID algId, const std::string& password, const std::string& input, std::string& output)
 {
-    m_isRunning = true;
-    // Implementation will be added in next steps
-    m_isRunning = false;
+    std::vector<BYTE> encryptedBuffer = Base64Decode(input);
+    if (encryptedBuffer.empty()) {
+        return -1;
+    }
+
+    std::vector<BYTE> decryptedBuffer;
+
+    int result = DecryptBuffer(algId, encryptedBuffer, decryptedBuffer, password);
+    if (result < 0) {
+        return result;
+    }
+
+    output.assign(decryptedBuffer.begin(), decryptedBuffer.end());
+
     return 0;
 }
 
+
 int CCryptoHandler::HashString(ALG_ID algId, const std::string& input, std::string& outputHash)
 {
-    m_isRunning = true;
-    // Implementation will be added in next steps
-    m_isRunning = false;
-    return 0;
+    std::vector<BYTE> inputBuffer(input.begin(), input.end());
+    return HashBuffer(algId, inputBuffer, outputHash);
 }
 
 int CCryptoHandler::EncryptBuffer(ALG_ID algId, const std::vector<BYTE>& input, std::vector<BYTE>& encryptedOutput, const std::string& password)
@@ -263,16 +314,34 @@ int CCryptoHandler::HashBuffer(ALG_ID algId, const std::vector<BYTE>& input, std
     return 0;
 }
 
-std::string CCryptoHandler::Base64Encode(const std::string& input)
+std::string CCryptoHandler::Base64Encode(const std::vector<BYTE>& input)
 {
-    // Implementation will be added in next steps
-    return "";
+    DWORD outputLength = 0;
+    if (!CryptBinaryToStringA(input.data(), static_cast<DWORD>(input.size()), CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, NULL, &outputLength)) {
+        return "";
+    }
+
+    std::string encodedString(outputLength, '\0');
+    if (!CryptBinaryToStringA(input.data(), static_cast<DWORD>(input.size()), CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, &encodedString[0], &outputLength)) {
+        return "";
+    }
+
+    return encodedString;
 }
 
-std::string CCryptoHandler::Base64Decode(const std::string& input)
+std::vector<BYTE> CCryptoHandler::Base64Decode(const std::string& input)
 {
-    // Implementation will be added in next steps
-    return "";
+    DWORD outputLength = 0;
+    if (!CryptStringToBinaryA(input.c_str(), static_cast<DWORD>(input.size()), CRYPT_STRING_BASE64, NULL, &outputLength, NULL, NULL)) {
+        return {};
+    }
+
+    std::vector<BYTE> decodedData(outputLength);
+    if (!CryptStringToBinaryA(input.c_str(), static_cast<DWORD>(input.size()), CRYPT_STRING_BASE64, decodedData.data(), &outputLength, NULL, NULL)) {
+        return {};
+    }
+
+    return decodedData;
 }
 
 std::vector<BYTE> CCryptoHandler::StringToBytes(const std::string& str)

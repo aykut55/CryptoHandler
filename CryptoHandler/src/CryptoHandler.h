@@ -48,8 +48,8 @@ public:
     int HashBuffer(ALG_ID algId, const std::vector<BYTE>& input, std::string& outputHash);
 
     // Utility functions
-    std::string Base64Encode(const std::string& input);
-    std::string Base64Decode(const std::string& input);
+    std::string Base64Encode(const std::vector<BYTE>& input);
+    std::vector<BYTE> Base64Decode(const std::string& input);
     std::vector<BYTE> StringToBytes(const std::string& str);
     std::string BytesToString(const std::vector<BYTE>& bytes);
     std::string GetLastErrorString();
