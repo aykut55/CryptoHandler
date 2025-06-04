@@ -37,13 +37,22 @@ public:
         std::string name;
     };
 
+    
+    // Asenkron File operations (Thread)
+    int EncryptFileAsync(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password,
+        StartCallback start, ProgressCallback progress, CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec);
+    int DecryptFileAsync(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password,
+        StartCallback start, ProgressCallback progress, CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec);
+    int HashFileAsync(ALG_ID algId, const std::string& inputFile, std::string& outputHash,
+        StartCallback start, ProgressCallback progress, CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec);
+
     // Asenkron File operations
     int EncryptFileWithCallback(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password,
-        StartCallback start, ProgressCallback progress,CompletionCallback completion, bool& isRunning);
+        StartCallback start, ProgressCallback progress,CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec);
     int DecryptFileWithCallback(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password,
-        StartCallback start, ProgressCallback progress, CompletionCallback completion, bool& isRunning);
+        StartCallback start, ProgressCallback progress, CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec);
     int HashFileWithCallback(ALG_ID algId, const std::string& inputFile, std::string& outputHash, 
-        StartCallback start, ProgressCallback progress, CompletionCallback completion, bool& isRunning);
+        StartCallback start, ProgressCallback progress, CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec);
 
     // File operations
     int EncryptFile(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password);
@@ -80,6 +89,9 @@ private:
     HCRYPTKEY GenerateKey(ALG_ID algId, HCRYPTPROV hProv, const std::string& password);
     bool ValidateAlgorithm(ALG_ID algId, AlgorithmType expectedType) const;
     std::string HashData(ALG_ID algId, const BYTE* data, DWORD dataLen);
+
+    long long getElapsedTimeMSec(std::chrono::time_point<std::chrono::steady_clock>& m_startTime, std::chrono::time_point<std::chrono::steady_clock>& m_currentTime) const;
+    long long getElapsedTimeMSecUpToNow(std::chrono::time_point<std::chrono::steady_clock>& m_startTime) const;
 };
 
 #endif // CryptoHandlerH

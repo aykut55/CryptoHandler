@@ -152,79 +152,229 @@ void FileEncryptionDecryptionHashExample(CCryptoHandler& handler, ALG_ID encAlgI
     }
 }
 
-void FileEncryptionDecryptionHashAsenkronExample(CCryptoHandler& handler, ALG_ID encAlgId, ALG_ID hashAlgId, const std::string& password,
+void FileEncryptionDecryptionHashCallbackExample(CCryptoHandler& handler, ALG_ID encAlgId, ALG_ID hashAlgId, const std::string& password,
     const std::string& inputFile, const std::string& encryptedFile, const std::string& decryptedFile)
 {
+    long long elapsedTimeMSec = 0;
+
     bool isRunning = false;
 
     handler.EncryptFileWithCallback(encAlgId, inputFile, encryptedFile, password,
-        []() { 
-            std::cout << "Encryption started!\n"; },
-
-        [](size_t processed, size_t total) {
-            std::cout << "Encrypted: " << processed << " / " << total << " bytes\r";
+        [&]() {
+            std::cout << "Encryption started!\n"; 
         },
-
-        [](int result) {
+        [&](size_t processed, size_t total) {
+            std::cout << "Encrypted: " << processed << " / " << total << " bytes";
+            std::cout << ", Elapsed: " << std::to_string(elapsedTimeMSec) << " ms";
+            std::cout << "\r";
+        },
+        [&](int result) {
             if (result == 0)
+            {
                 std::cout << "\nEncryption completed successfully.\n";
+                std::cout << "Elapsed Time : " << std::to_string(elapsedTimeMSec) << " ms" << std::endl;
+            }                
             else
                 std::cerr << "\nEncryption failed!\n";
         },
-        isRunning
+        isRunning,
+        elapsedTimeMSec
     );
 
-    // Wait for operation to complete
-    while (isRunning) { //handler.IsRunning()
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
+    std::cout << std::endl;
+    std::cout << std::endl;
 
-    std::cout << std::endl;
-    std::cout << std::endl;
+    elapsedTimeMSec = 0;
 
     isRunning = false;
 
-    handler.DecryptFileWithCallback(
-        encAlgId, encryptedFile, decryptedFile, password,
-        []()
-        { std::cout << "Decryption started!\n"; },
-        [](size_t processed, size_t total) {
-            std::cout << "Decrypted: " << processed << " / " << total << " bytes\r";
+    handler.DecryptFileWithCallback(encAlgId, encryptedFile, decryptedFile, password,
+        [&]()
+        { 
+            std::cout << "Decryption started!\n"; 
         },
-        [](int result) {
+        [&](size_t processed, size_t total) {
+            std::cout << "Decrypted: " << processed << " / " << total << " bytes";
+            std::cout << ", Elapsed: " << std::to_string(elapsedTimeMSec) << " ms";
+            std::cout << "\r";
+        },
+        [&](int result) {
             if (result == 0)
+            {
                 std::cout << "\nDecryption completed successfully.\n";
+                std::cout << "Elapsed Time : " << std::to_string(elapsedTimeMSec) << " ms" << std::endl;
+            }
             else
                 std::cerr << "\nDecryption failed!\n";
         },
-        isRunning
+        isRunning,
+        elapsedTimeMSec
     );
 
-    // Wait for operation to complete
-    while (isRunning) { //handler.IsRunning()
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
+    std::cout << std::endl;
+    std::cout << std::endl;
 
-    std::cout << std::endl;
-    std::cout << std::endl;
+    elapsedTimeMSec = 0;
 
     isRunning = false;
 
     std::string hashOutput;
 
-    handler.HashFileWithCallback(
-        hashAlgId, inputFile, hashOutput,
-        []() { std::cout << "Hashing started!\n"; },
-        [](size_t processed, size_t total) {
-            std::cout << "Hashed: " << processed << " / " << total << " bytes\r";
+    handler.HashFileWithCallback(hashAlgId, inputFile, hashOutput,
+        [&]() { 
+            std::cout << "Hashing started!\n"; 
+        },
+        [&](size_t processed, size_t total) {
+            std::cout << "Hashed: " << processed << " / " << total << " bytes";
+            std::cout << ", Elapsed: " << std::to_string(elapsedTimeMSec) << " ms";
+            std::cout << "\r";
         },
         [&](int result) {
             if (result == 0)
+            {
                 std::cout << "\nHash completed successfully: " << hashOutput << "\n";
+                std::cout << "Elapsed Time : " << std::to_string(elapsedTimeMSec) << " ms" << std::endl;
+            }                
             else
                 std::cerr << "\nHash failed!\n";
         },
-        isRunning
+        isRunning,
+        elapsedTimeMSec
+    );
+
+    std::cout << std::endl;
+    std::cout << std::endl;
+
+
+
+
+    std::string originalHash, decryptedHash;
+
+    if (handler.HashFile(hashAlgId, inputFile, originalHash) != 0) {
+        std::cerr << "Original file hashing failed." << std::endl;
+        return;
+    }
+
+    if (handler.HashFile(hashAlgId, decryptedFile, decryptedHash) != 0) {
+        std::cerr << "Decrypted file hashing failed." << std::endl;
+        return;
+    }
+
+    std::cout << "Original file SHA-256 : " << originalHash << std::endl;
+    std::cout << "Decrypted file SHA-256: " << decryptedHash << std::endl;
+
+    if (originalHash == decryptedHash) {
+        std::cout << "Decrypted file matches original!" << std::endl;
+    }
+    else {
+        std::cerr << "Decrypted file does not match original!" << std::endl;
+    }
+
+    std::cout << std::endl;
+    std::cout << std::endl;
+
+    std::cout << std::endl;
+    std::cout << std::endl;
+}
+
+void FileEncryptionDecryptionHashAsenkronExample(CCryptoHandler& handler, ALG_ID encAlgId, ALG_ID hashAlgId, const std::string& password,
+    const std::string& inputFile, const std::string& encryptedFile, const std::string& decryptedFile)
+{
+    long long elapsedTimeMSec = 0;
+
+    bool isRunning = false;
+
+    handler.EncryptFileAsync(encAlgId, inputFile, encryptedFile, password,
+        [&]() {
+            std::cout << "Encryption started!\n"; 
+        },
+        [&](size_t processed, size_t total) {
+            std::cout << "Encrypted: " << processed << " / " << total << " bytes";
+            std::cout << ", Elapsed: " << std::to_string(elapsedTimeMSec) << " ms";
+            std::cout << "\r";
+        },
+        [&](int result) {
+            if (result == 0)
+            {
+                std::cout << "\nEncryption completed successfully.\n";
+                std::cout << "Elapsed Time : " << std::to_string(elapsedTimeMSec) << " ms" << std::endl;
+            }
+            else
+                std::cerr << "\nEncryption failed!\n";
+        },
+        isRunning,
+        elapsedTimeMSec
+    );
+
+    // Wait for operation to complete
+    while (isRunning) { //handler.IsRunning()
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    std::cout << std::endl;
+    std::cout << std::endl;
+
+    elapsedTimeMSec = 0;
+
+    isRunning = false;
+
+    handler.DecryptFileAsync(encAlgId, encryptedFile, decryptedFile, password,
+        [&]()
+        { 
+            std::cout << "Decryption started!\n"; 
+        },
+        [&](size_t processed, size_t total) {
+            std::cout << "Decrypted: " << processed << " / " << total << " bytes";
+            std::cout << ", Elapsed: " << std::to_string(elapsedTimeMSec) << " ms";
+            std::cout << "\r";
+        },
+        [&](int result) {
+            if (result == 0)
+            {
+                std::cout << "\nDecryption completed successfully.\n";
+                std::cout << "Elapsed Time : " << std::to_string(elapsedTimeMSec) << " ms" << std::endl;
+            }
+            else
+                std::cerr << "\nDecryption failed!\n";
+        },
+        isRunning,
+        elapsedTimeMSec
+    );
+
+    // Wait for operation to complete
+    while (isRunning) { //handler.IsRunning()
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    std::cout << std::endl;
+    std::cout << std::endl;
+
+    elapsedTimeMSec = 0;
+
+    isRunning = false;
+
+    std::string hashOutput;
+
+    handler.HashFileAsync(hashAlgId, inputFile, hashOutput,
+        [&]() { 
+            std::cout << "Hashing started!\n"; 
+        },
+        [&](size_t processed, size_t total) {    
+            std::cout << "Hashed: " << processed << " / " << total << " bytes";
+            std::cout << ", Elapsed: " << std::to_string(elapsedTimeMSec) << " ms";
+            std::cout << "\r";
+        },
+        [&](int result) {
+            if (result == 0)
+            {
+                std::cout << "\nHash completed successfully: " << hashOutput << "\n";
+                std::cout << "Elapsed Time : " << std::to_string(elapsedTimeMSec) << " ms" << std::endl;
+            }
+            else
+                std::cerr << "\nHash failed!\n";
+        },
+        isRunning,
+        elapsedTimeMSec
     );
 
     // Wait for operation to complete
@@ -283,8 +433,8 @@ int main()
     std::string decryptedString = "";
 
     char inputBuffer[] = { "Due to technical issues, the email system is having troubles sending to some providers" };
-    char encryptedBuffer[4096];
-    char decryptedBuffer[4096];
+    char encryptedBuffer[4096] = {};
+    char decryptedBuffer[4096] = {};
 
     std::string hashFile = "";
     std::string hashString = "";
@@ -292,7 +442,7 @@ int main()
 
     std::string inputText = "";
 
-    int result;
+    int result = 0;
 
 #if 0
     // --------------------------------------------------------------------
@@ -446,6 +596,16 @@ int main()
 
     inputFileName = "../input_text.txt";
     FileEncryptionDecryptionHashExample(cryptoHandler, CALG_AES_256, CALG_SHA_256, password, inputFileName, encryptedFileName, decryptedFileName);
+    std::cout << std::endl;
+
+    std::cout << std::endl;
+    std::cout << "========================================================" << std::endl;
+    std::cout << "FileEncryptionDecryptionHashCallbackExample" << std::endl;
+    std::cout << "========================================================" << std::endl;
+    std::cout << std::endl;
+
+    inputFileName = "../input_text.txt";
+    FileEncryptionDecryptionHashCallbackExample(cryptoHandler, CALG_AES_256, CALG_SHA_256, password, inputFileName, encryptedFileName, decryptedFileName);
     std::cout << std::endl;
 
     std::cout << std::endl;

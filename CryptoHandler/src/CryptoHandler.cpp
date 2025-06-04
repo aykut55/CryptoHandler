@@ -381,11 +381,201 @@ std::string CCryptoHandler::GetLastErrorString()
 int CCryptoHandler::EncryptFileWithCallback(ALG_ID algId, const std::string& inputFile,
     const std::string& outputFile, const std::string& password,
     StartCallback start, ProgressCallback progress,
-    CompletionCallback completion, bool& isRunning)
+    CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec)
 {
     isRunning = true; // hemen ata (main thread)
 
-    std::thread([=, &isRunning]() mutable {
+    auto startTime = std::chrono::steady_clock::now();
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
+    if (start) start();
+
+    std::ifstream in(inputFile, std::ios::binary | std::ios::ate);
+    if (!in) {
+        if (completion) completion(-1);
+        isRunning = false;
+        return -1;
+    }
+
+    size_t fileSize = in.tellg();
+    in.seekg(0);
+
+    const size_t chunkSize = 4096;
+    std::vector<BYTE> inputBuffer;
+    inputBuffer.reserve(fileSize);
+
+    size_t totalRead = 0;
+    BYTE buffer[chunkSize];
+
+    while (in) {
+        elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+        in.read(reinterpret_cast<char*>(buffer), chunkSize);
+        size_t bytesRead = in.gcount();
+        totalRead += bytesRead;
+        inputBuffer.insert(inputBuffer.end(), buffer, buffer + bytesRead);
+        if (progress) progress(totalRead, fileSize);
+    }
+
+    in.close();
+
+    std::vector<BYTE> encryptedBuffer;
+    int result = EncryptBuffer(algId, inputBuffer, encryptedBuffer, password);
+    if (result < 0) {
+        if (completion) completion(result);
+        isRunning = false;
+        return -2;
+    }
+
+    std::ofstream out(outputFile, std::ios::binary);
+    if (!out) {
+        if (completion) completion(-1);
+        isRunning = false;
+        return -3;
+    }
+
+    out.write(reinterpret_cast<const char*>(encryptedBuffer.data()), encryptedBuffer.size());
+    out.close();
+
+    if (completion) completion(0);
+
+    isRunning = false;
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
+    return 0;
+}
+
+int CCryptoHandler::DecryptFileWithCallback(ALG_ID algId, const std::string& inputFile,
+    const std::string& outputFile, const std::string& password,
+    StartCallback start, ProgressCallback progress,
+    CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec)
+{
+    isRunning = true; // hemen ata (main thread)
+
+    auto startTime = std::chrono::steady_clock::now();
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
+    if (start) start();
+
+    std::ifstream in(inputFile, std::ios::binary | std::ios::ate);
+    if (!in) {
+        if (completion) completion(-1);
+        isRunning = false;
+        return -1;
+    }
+
+    size_t fileSize = in.tellg();
+    in.seekg(0);
+
+    const size_t chunkSize = 4096;
+    std::vector<BYTE> encryptedBuffer;
+    encryptedBuffer.reserve(fileSize);
+
+    size_t totalRead = 0;
+    BYTE buffer[chunkSize];
+
+    while (in) {
+        elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+        in.read(reinterpret_cast<char*>(buffer), chunkSize);
+        size_t bytesRead = in.gcount();
+        totalRead += bytesRead;
+        encryptedBuffer.insert(encryptedBuffer.end(), buffer, buffer + bytesRead);
+        if (progress) progress(totalRead, fileSize);
+    }
+
+    in.close();
+
+    std::vector<BYTE> decryptedBuffer;
+    int result = DecryptBuffer(algId, encryptedBuffer, decryptedBuffer, password);
+    if (result < 0) {
+        if (completion) completion(result);
+        isRunning = false;
+        return -2;
+    }
+
+    std::ofstream out(outputFile, std::ios::binary);
+    if (!out) {
+        if (completion) completion(-1);
+        isRunning = false;
+        return -3;
+    }
+
+    out.write(reinterpret_cast<const char*>(decryptedBuffer.data()), decryptedBuffer.size());
+    out.close();
+
+    if (completion) completion(0);
+
+    isRunning = false;
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
+    return 0;
+}
+
+int CCryptoHandler::HashFileWithCallback(ALG_ID algId, const std::string& inputFile, std::string& outputHash,
+    StartCallback start, ProgressCallback progress,
+    CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec)
+{
+    isRunning = true; // hemen ata (main thread)
+
+    auto startTime = std::chrono::steady_clock::now();
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
+    if (start) start();
+
+    std::ifstream in(inputFile, std::ios::binary | std::ios::ate);
+    if (!in) {
+        if (completion) completion(-1);
+        isRunning = false;
+        return -1;
+    }
+
+    size_t fileSize = in.tellg();
+    in.seekg(0);
+
+    const size_t chunkSize = 4096;
+    std::vector<BYTE> inputBuffer;
+    inputBuffer.reserve(fileSize);
+
+    size_t totalRead = 0;
+    BYTE buffer[chunkSize];
+
+    while (in) {
+        elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+        in.read(reinterpret_cast<char*>(buffer), chunkSize);
+        size_t bytesRead = in.gcount();
+        totalRead += bytesRead;
+        inputBuffer.insert(inputBuffer.end(), buffer, buffer + bytesRead);
+        if (progress) progress(totalRead, fileSize);
+    }
+
+    in.close();
+
+    int result = HashBuffer(algId, inputBuffer, outputHash);
+    if (completion) completion(result);
+
+    isRunning = false;
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
+    return 0;
+}
+
+int CCryptoHandler::EncryptFileAsync(ALG_ID algId, const std::string& inputFile,
+    const std::string& outputFile, const std::string& password,
+    StartCallback start, ProgressCallback progress,
+    CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec)
+{
+    isRunning = true; // hemen ata (main thread)
+
+    auto startTime = std::chrono::steady_clock::now();
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
+    std::thread([=, &isRunning, &elapsedTimeMSec]() mutable {
 
         if (start) start();
 
@@ -407,6 +597,7 @@ int CCryptoHandler::EncryptFileWithCallback(ALG_ID algId, const std::string& inp
         BYTE buffer[chunkSize];
 
         while (in) {
+            elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
             in.read(reinterpret_cast<char*>(buffer), chunkSize);
             size_t bytesRead = in.gcount();
             totalRead += bytesRead;
@@ -435,20 +626,30 @@ int CCryptoHandler::EncryptFileWithCallback(ALG_ID algId, const std::string& inp
         out.close();
 
         if (completion) completion(0);
+
         isRunning = false;
+
+        elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
         }).detach();
+
+        elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
 
         return 0;
 }
 
-int CCryptoHandler::DecryptFileWithCallback(ALG_ID algId, const std::string& inputFile,
+int CCryptoHandler::DecryptFileAsync(ALG_ID algId, const std::string& inputFile,
     const std::string& outputFile, const std::string& password,
     StartCallback start, ProgressCallback progress,
-    CompletionCallback completion, bool& isRunning)
+    CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec)
 {
     isRunning = true; // hemen ata (main thread)
 
-    std::thread([=, &isRunning]() mutable {
+    auto startTime = std::chrono::steady_clock::now();
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
+    std::thread([=, &isRunning, &elapsedTimeMSec]() mutable {
 
         if (start) start();
 
@@ -470,6 +671,7 @@ int CCryptoHandler::DecryptFileWithCallback(ALG_ID algId, const std::string& inp
         BYTE buffer[chunkSize];
 
         while (in) {
+            elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
             in.read(reinterpret_cast<char*>(buffer), chunkSize);
             size_t bytesRead = in.gcount();
             totalRead += bytesRead;
@@ -498,19 +700,29 @@ int CCryptoHandler::DecryptFileWithCallback(ALG_ID algId, const std::string& inp
         out.close();
 
         if (completion) completion(0);
+
         isRunning = false;
+
+        elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
         }).detach();
+
+        elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
 
         return 0;
 }
 
-int CCryptoHandler::HashFileWithCallback(ALG_ID algId, const std::string& inputFile, std::string& outputHash,
+int CCryptoHandler::HashFileAsync(ALG_ID algId, const std::string& inputFile, std::string& outputHash,
     StartCallback start, ProgressCallback progress,
-    CompletionCallback completion, bool& isRunning)
+    CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec)
 {
     isRunning = true; // hemen ata (main thread)
 
-    std::thread([=, &isRunning]() mutable {
+    auto startTime = std::chrono::steady_clock::now();
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
+    std::thread([=, &isRunning, &elapsedTimeMSec]() mutable {
 
         if (start) start();
 
@@ -532,6 +744,7 @@ int CCryptoHandler::HashFileWithCallback(ALG_ID algId, const std::string& inputF
         BYTE buffer[chunkSize];
 
         while (in) {
+            elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
             in.read(reinterpret_cast<char*>(buffer), chunkSize);
             size_t bytesRead = in.gcount();
             totalRead += bytesRead;
@@ -542,10 +755,29 @@ int CCryptoHandler::HashFileWithCallback(ALG_ID algId, const std::string& inputF
         in.close();
 
         int result = HashBuffer(algId, inputBuffer, outputHash);
+
         if (completion) completion(result);
+
         isRunning = false;
+
+        elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
 
         }).detach();
 
+        elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
         return 0;
 }
+
+long long CCryptoHandler::getElapsedTimeMSec(std::chrono::time_point<std::chrono::steady_clock>& m_startTime, std::chrono::time_point<std::chrono::steady_clock>& m_currentTime) const
+{
+    return std::chrono::duration_cast<std::chrono::milliseconds>(m_currentTime - m_startTime).count();
+}
+
+long long CCryptoHandler::getElapsedTimeMSecUpToNow(std::chrono::time_point<std::chrono::steady_clock>& m_startTime) const
+{
+    auto now = std::chrono::steady_clock::now();
+
+    return getElapsedTimeMSec(m_startTime, now);
+}
+
