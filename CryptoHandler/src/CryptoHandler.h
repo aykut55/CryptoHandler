@@ -20,6 +20,7 @@
 using StartCallback = std::function<void()>;
 using ProgressCallback = std::function<void(size_t bytesProcessed, size_t totalBytes)>;
 using CompletionCallback = std::function<void(int resultCode)>;
+using ErrorCallback = std::function<void(int resultCode)>;
 
 class CCryptoHandler
 {
@@ -37,6 +38,16 @@ public:
     int DecryptBuffer(ALG_ID algId, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput, const std::string& password, bool& isRunning, long long& elapsedTimeMSec);
     int HashBuffer(ALG_ID algId, const std::vector<BYTE>& input, std::string& outputHash, bool& isRunning, long long& elapsedTimeMSec);
 
+    // Loop ile yapilacak...
+    int EncryptBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::vector<BYTE>& encryptedOutput, const std::string& password);
+    int DecryptBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput, const std::string& password);
+    int HashBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::string& outputHash);
+
+    // bool& isRunning, long long& elapsedTimeMSec  leri pointer gecir...
+    int EncryptBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::vector<BYTE>& encryptedOutput, const std::string& password, bool& isRunning, long long& elapsedTimeMSec, StartCallback start = NULL, ProgressCallback progress = NULL, CompletionCallback completion = NULL, ErrorCallback error = NULL);
+    int DecryptBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput, const std::string& password, bool& isRunning, long long& elapsedTimeMSec, StartCallback start = NULL, ProgressCallback progress = NULL, CompletionCallback completion = NULL, ErrorCallback error = NULL);
+    int HashBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::string& outputHash, bool& isRunning, long long& elapsedTimeMSec, StartCallback start = NULL, ProgressCallback progress = NULL, CompletionCallback completion = NULL, ErrorCallback error = NULL);
+    
     //--------------------------------------------------------------------------------------------------------------------------------------------------
     // String operations
     int EncryptString(ALG_ID algId, const std::string& password, const std::string& input, std::string& output);

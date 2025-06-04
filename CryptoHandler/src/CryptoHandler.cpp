@@ -283,6 +283,38 @@ int CCryptoHandler::HashBuffer(ALG_ID algId, const std::vector<BYTE>& input, std
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------
+int CCryptoHandler::EncryptBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::vector<BYTE>& encryptedOutput, const std::string& password)
+{
+    return 0;
+}
+
+int CCryptoHandler::DecryptBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput, const std::string& password) 
+{
+    return 0;
+}
+
+int CCryptoHandler::HashBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::string& outputHash)
+{
+    return 0;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+int CCryptoHandler::EncryptBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::vector<BYTE>& encryptedOutput, const std::string& password, bool& isRunning, long long& elapsedTimeMSec, StartCallback start, ProgressCallback progress, CompletionCallback completion, ErrorCallback error)
+{
+    return 0;
+}
+
+int CCryptoHandler::DecryptBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput, const std::string& password, bool& isRunning, long long& elapsedTimeMSec, StartCallback start, ProgressCallback progress, CompletionCallback completion, ErrorCallback error)
+{
+    return 0;
+}
+
+int CCryptoHandler::HashBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::string& outputHash, bool& isRunning, long long& elapsedTimeMSec, StartCallback start, ProgressCallback progress, CompletionCallback completion, ErrorCallback error)
+{
+    return 0;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------
 int CCryptoHandler::EncryptString(ALG_ID algId, const std::string& password, const std::string& input, std::string& output)
 {
     bool isRunning = false; long long elapsedTimeMSec = 0;
