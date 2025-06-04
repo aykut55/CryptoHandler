@@ -84,10 +84,36 @@ bool CCryptoHandler::ValidateAlgorithm(ALG_ID algId, AlgorithmType expectedType)
 //--------------------------------------------------------------------------------------------------------------------------------------------------
 int CCryptoHandler::EncryptBuffer(ALG_ID algId, const std::vector<BYTE>& input, std::vector<BYTE>& encryptedOutput, const std::string& password)
 {
+    bool isRunning = false; long long elapsedTimeMSec = 0;
+    return EncryptBuffer(algId, input, encryptedOutput, password, isRunning, elapsedTimeMSec);
+}
+
+int CCryptoHandler::DecryptBuffer(ALG_ID algId, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput, const std::string& password)
+{
+    bool isRunning = false; long long elapsedTimeMSec = 0;
+    return DecryptBuffer(algId, encryptedInput, decryptedOutput, password, isRunning, elapsedTimeMSec);
+}
+
+int CCryptoHandler::HashBuffer(ALG_ID algId, const std::vector<BYTE>& input, std::string& outputHash)
+{
+    bool isRunning = false; long long elapsedTimeMSec = 0;
+    return HashBuffer(algId, input, outputHash, isRunning, elapsedTimeMSec);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+int CCryptoHandler::EncryptBuffer(ALG_ID algId, const std::vector<BYTE>& input, std::vector<BYTE>& encryptedOutput, const std::string& password, bool& isRunning, long long& elapsedTimeMSec)
+{
+    isRunning = true; // hemen ata (main thread)
+
+    auto startTime = std::chrono::steady_clock::now();
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
     m_isRunning = true;
 
     HCRYPTPROV hProv = GetCryptProvider();
     if (!hProv) {
+        isRunning = false;
         m_isRunning = false;
         return -1;
     }
@@ -95,6 +121,7 @@ int CCryptoHandler::EncryptBuffer(ALG_ID algId, const std::vector<BYTE>& input, 
     HCRYPTKEY hKey = GenerateKey(algId, hProv, password);
     if (!hKey) {
         CryptReleaseContext(hProv, 0);
+        isRunning = false;
         m_isRunning = false;
         return -1;
     }
@@ -106,6 +133,7 @@ int CCryptoHandler::EncryptBuffer(ALG_ID algId, const std::vector<BYTE>& input, 
     if (!CryptEncrypt(hKey, 0, TRUE, 0, NULL, &encryptedLen, 0)) {
         CryptDestroyKey(hKey);
         CryptReleaseContext(hProv, 0);
+        isRunning = false;
         m_isRunning = false;
         return -1;
     }
@@ -116,6 +144,7 @@ int CCryptoHandler::EncryptBuffer(ALG_ID algId, const std::vector<BYTE>& input, 
     if (!CryptEncrypt(hKey, 0, TRUE, 0, encryptedOutput.data(), &inputLen, encryptedLen)) {
         CryptDestroyKey(hKey);
         CryptReleaseContext(hProv, 0);
+        isRunning = false;
         m_isRunning = false;
         return -1;
     }
@@ -123,16 +152,28 @@ int CCryptoHandler::EncryptBuffer(ALG_ID algId, const std::vector<BYTE>& input, 
     CryptDestroyKey(hKey);
     CryptReleaseContext(hProv, 0);
 
+    isRunning = false;
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
     m_isRunning = false;
+
     return encryptedLen;
 }
 
-int CCryptoHandler::DecryptBuffer(ALG_ID algId, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput, const std::string& password)
+int CCryptoHandler::DecryptBuffer(ALG_ID algId, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput, const std::string& password, bool& isRunning, long long& elapsedTimeMSec)
 {
+    isRunning = true; // hemen ata (main thread)
+
+    auto startTime = std::chrono::steady_clock::now();
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
     m_isRunning = true;
 
     HCRYPTPROV hProv = GetCryptProvider();
     if (!hProv) {
+        isRunning = false;
         m_isRunning = false;
         return -1;
     }
@@ -140,6 +181,7 @@ int CCryptoHandler::DecryptBuffer(ALG_ID algId, const std::vector<BYTE>& encrypt
     HCRYPTKEY hKey = GenerateKey(algId, hProv, password);
     if (!hKey) {
         CryptReleaseContext(hProv, 0);
+        isRunning = false;
         m_isRunning = false;
         return -1;
     }
@@ -150,6 +192,7 @@ int CCryptoHandler::DecryptBuffer(ALG_ID algId, const std::vector<BYTE>& encrypt
     if (!CryptDecrypt(hKey, 0, TRUE, 0, buffer.data(), &bufferLen)) {
         CryptDestroyKey(hKey);
         CryptReleaseContext(hProv, 0);
+        isRunning = false;
         m_isRunning = false;
         return -1;
     }
@@ -160,16 +203,28 @@ int CCryptoHandler::DecryptBuffer(ALG_ID algId, const std::vector<BYTE>& encrypt
     CryptDestroyKey(hKey);
     CryptReleaseContext(hProv, 0);
 
+    isRunning = false;
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
     m_isRunning = false;
+
     return bufferLen;
 }
 
-int CCryptoHandler::HashBuffer(ALG_ID algId, const std::vector<BYTE>& input, std::string& outputHash)
+int CCryptoHandler::HashBuffer(ALG_ID algId, const std::vector<BYTE>& input, std::string& outputHash, bool& isRunning, long long& elapsedTimeMSec)
 {
+    isRunning = true; // hemen ata (main thread)
+
+    auto startTime = std::chrono::steady_clock::now();
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
     m_isRunning = true;
 
     HCRYPTPROV hProv = GetCryptProvider();
     if (!hProv) {
+        isRunning = false;
         m_isRunning = false;
         return -1;
     }
@@ -177,6 +232,7 @@ int CCryptoHandler::HashBuffer(ALG_ID algId, const std::vector<BYTE>& input, std
     HCRYPTHASH hHash = 0;
     if (!CryptCreateHash(hProv, algId, 0, 0, &hHash)) {
         CryptReleaseContext(hProv, 0);
+        isRunning = false;
         m_isRunning = false;
         return -1;
     }
@@ -184,6 +240,7 @@ int CCryptoHandler::HashBuffer(ALG_ID algId, const std::vector<BYTE>& input, std
     if (!CryptHashData(hHash, input.data(), static_cast<DWORD>(input.size()), 0)) {
         CryptDestroyHash(hHash);
         CryptReleaseContext(hProv, 0);
+        isRunning = false;
         m_isRunning = false;
         return -1;
     }
@@ -193,6 +250,7 @@ int CCryptoHandler::HashBuffer(ALG_ID algId, const std::vector<BYTE>& input, std
     if (!CryptGetHashParam(hHash, HP_HASHSIZE, reinterpret_cast<BYTE*>(&hashLen), &hashLenSize, 0)) {
         CryptDestroyHash(hHash);
         CryptReleaseContext(hProv, 0);
+        isRunning = false;
         m_isRunning = false;
         return -1;
     }
@@ -201,6 +259,7 @@ int CCryptoHandler::HashBuffer(ALG_ID algId, const std::vector<BYTE>& input, std
     if (!CryptGetHashParam(hHash, HP_HASHVAL, hashValue.data(), &hashLen, 0)) {
         CryptDestroyHash(hHash);
         CryptReleaseContext(hProv, 0);
+        isRunning = false;
         m_isRunning = false;
         return -1;
     }
@@ -214,31 +273,73 @@ int CCryptoHandler::HashBuffer(ALG_ID algId, const std::vector<BYTE>& input, std
     CryptDestroyHash(hHash);
     CryptReleaseContext(hProv, 0);
 
+    isRunning = false;
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
     m_isRunning = false;
+
     return 0;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------
 int CCryptoHandler::EncryptString(ALG_ID algId, const std::string& password, const std::string& input, std::string& output)
 {
+    bool isRunning = false; long long elapsedTimeMSec = 0;
+    return EncryptString(algId, password, input, output, isRunning, elapsedTimeMSec);
+}
+
+int CCryptoHandler::DecryptString(ALG_ID algId, const std::string& password, const std::string& input, std::string& output)
+{
+    bool isRunning = false; long long elapsedTimeMSec = 0;
+    return DecryptString(algId, password, input, output, isRunning, elapsedTimeMSec);
+}
+
+int CCryptoHandler::HashString(ALG_ID algId, const std::string& input, std::string& outputHash)
+{
+    bool isRunning = false; long long elapsedTimeMSec = 0;
+    return HashString(algId, input, outputHash, isRunning, elapsedTimeMSec);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+int CCryptoHandler::EncryptString(ALG_ID algId, const std::string& password, const std::string& input, std::string& output, bool& isRunning, long long& elapsedTimeMSec)
+{
+    isRunning = true; // hemen ata (main thread)
+
+    auto startTime = std::chrono::steady_clock::now();
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
     std::vector<BYTE> inputBuffer(input.begin(), input.end());
     std::vector<BYTE> encryptedBuffer;
 
     int result = EncryptBuffer(algId, inputBuffer, encryptedBuffer, password);
     if (result < 0) {
+        isRunning = false;
         return result;
     }
 
     // Base64Encode işlemi BYTE vector üzerinden yapıldı
     output = Base64Encode(encryptedBuffer);
 
+    isRunning = false;
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
     return 0;
 }
 
-int CCryptoHandler::DecryptString(ALG_ID algId, const std::string& password, const std::string& input, std::string& output)
+int CCryptoHandler::DecryptString(ALG_ID algId, const std::string& password, const std::string& input, std::string& output, bool& isRunning, long long& elapsedTimeMSec)
 {
+    isRunning = true; // hemen ata (main thread)
+
+    auto startTime = std::chrono::steady_clock::now();
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
     std::vector<BYTE> encryptedBuffer = Base64Decode(input);
     if (encryptedBuffer.empty()) {
+        isRunning = false;
         return -1;
     }
 
@@ -246,25 +347,75 @@ int CCryptoHandler::DecryptString(ALG_ID algId, const std::string& password, con
 
     int result = DecryptBuffer(algId, encryptedBuffer, decryptedBuffer, password);
     if (result < 0) {
+        isRunning = false;
         return result;
     }
 
     output.assign(decryptedBuffer.begin(), decryptedBuffer.end());
 
+    isRunning = false;
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
     return 0;
 }
 
-int CCryptoHandler::HashString(ALG_ID algId, const std::string& input, std::string& outputHash)
+int CCryptoHandler::HashString(ALG_ID algId, const std::string& input, std::string& outputHash, bool& isRunning, long long& elapsedTimeMSec)
 {
+    isRunning = true; // hemen ata (main thread)
+
+    auto startTime = std::chrono::steady_clock::now();
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
     std::vector<BYTE> inputBuffer(input.begin(), input.end());
-    return HashBuffer(algId, inputBuffer, outputHash);
+
+    int result = HashBuffer(algId, inputBuffer, outputHash);
+    if (result < 0) {
+        isRunning = false;
+        return result;
+    }
+
+    isRunning = false;
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
+    return 0;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------
 int CCryptoHandler::EncryptFile(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password)
 {
+    bool isRunning = false; long long elapsedTimeMSec = 0;
+    return EncryptFile(algId, inputFile, outputFile, password, isRunning, elapsedTimeMSec);
+}
+
+int CCryptoHandler::DecryptFile(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password)
+{
+    bool isRunning = false; long long elapsedTimeMSec = 0;
+    return DecryptFile(algId, inputFile, outputFile, password, isRunning, elapsedTimeMSec);
+}
+
+int CCryptoHandler::HashFile(ALG_ID algId, const std::string& inputFile, std::string& outputHash)
+{
+    bool isRunning = false; long long elapsedTimeMSec = 0;
+    return HashFile(algId, inputFile, outputHash, isRunning, elapsedTimeMSec);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+int CCryptoHandler::EncryptFile(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password, bool& isRunning, long long& elapsedTimeMSec)
+{
+    isRunning = true; // hemen ata (main thread)
+
+    auto startTime = std::chrono::steady_clock::now();
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
     std::ifstream in(inputFile, std::ios::binary);
-    if (!in) return -1;
+    if (!in) {
+        isRunning = false;
+        return -1;
+    }
 
     std::vector<BYTE> inputBuffer((std::istreambuf_iterator<char>(in)), {});
     in.close();
@@ -272,22 +423,39 @@ int CCryptoHandler::EncryptFile(ALG_ID algId, const std::string& inputFile, cons
     std::vector<BYTE> encryptedBuffer;
     int result = EncryptBuffer(algId, inputBuffer, encryptedBuffer, password);
     if (result < 0) {
+        isRunning = false;
         return result;
     }
 
     std::ofstream out(outputFile, std::ios::binary);
-    if (!out) return -1;
+    if (!out) {
+        isRunning = false;
+        return -1;
+    }
 
     out.write(reinterpret_cast<const char*>(encryptedBuffer.data()), encryptedBuffer.size());
     out.close();
 
+    isRunning = false;
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
     return 0;
 }
 
-int CCryptoHandler::DecryptFile(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password)
+int CCryptoHandler::DecryptFile(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password, bool& isRunning, long long& elapsedTimeMSec)
 {
+    isRunning = true; // hemen ata (main thread)
+
+    auto startTime = std::chrono::steady_clock::now();
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
     std::ifstream in(inputFile, std::ios::binary);
-    if (!in) return -1;
+    if (!in) {
+        isRunning = false;
+        return -1;
+    }
 
     std::vector<BYTE> encryptedBuffer((std::istreambuf_iterator<char>(in)), {});
     in.close();
@@ -295,27 +463,95 @@ int CCryptoHandler::DecryptFile(ALG_ID algId, const std::string& inputFile, cons
     std::vector<BYTE> decryptedBuffer;
     int result = DecryptBuffer(algId, encryptedBuffer, decryptedBuffer, password);
     if (result < 0) {
+        isRunning = false;
         return result;
     }
 
     std::ofstream out(outputFile, std::ios::binary);
-    if (!out) return -1;
+    if (!out) {
+        isRunning = false;
+        return -1;
+    }
 
     out.write(reinterpret_cast<const char*>(decryptedBuffer.data()), decryptedBuffer.size());
     out.close();
 
+    isRunning = false;
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
     return 0;
 }
 
-int CCryptoHandler::HashFile(ALG_ID algId, const std::string& inputFile, std::string& outputHash)
+int CCryptoHandler::HashFile(ALG_ID algId, const std::string& inputFile, std::string& outputHash, bool& isRunning, long long& elapsedTimeMSec)
 {
+    isRunning = true; // hemen ata (main thread)
+
+    auto startTime = std::chrono::steady_clock::now();
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
     std::ifstream in(inputFile, std::ios::binary);
-    if (!in) return -1;
+    if (!in) {
+        isRunning = false;
+        return -1;
+    }
 
     std::vector<BYTE> inputBuffer((std::istreambuf_iterator<char>(in)), {});
     in.close();
 
-    return HashBuffer(algId, inputBuffer, outputHash);
+    int result = HashBuffer(algId, inputBuffer, outputHash);
+    if (result < 0) {
+        isRunning = false;
+        return result;
+    }
+
+    isRunning = false;
+
+    elapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
+    return 0;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+int CCryptoHandler::EncryptFileWithCallback(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password)
+{
+    bool isRunning = false; long long elapsedTimeMSec = 0;
+    return EncryptFileWithCallback(algId, inputFile, outputFile, password, NULL, NULL, NULL, isRunning, elapsedTimeMSec);
+}
+
+int CCryptoHandler::DecryptFileWithCallback(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password)
+{
+    bool isRunning = false; long long elapsedTimeMSec = 0;
+    return DecryptFileWithCallback(algId, inputFile, outputFile, password, NULL, NULL, NULL, isRunning, elapsedTimeMSec);
+}
+
+int CCryptoHandler::HashFileWithCallback(ALG_ID algId, const std::string& inputFile, std::string& outputHash)
+{
+    bool isRunning = false; long long elapsedTimeMSec = 0;
+    return HashFileWithCallback(algId, inputFile, outputHash, NULL, NULL, NULL, isRunning, elapsedTimeMSec);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+int CCryptoHandler::EncryptFileWithCallback(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password,
+    StartCallback start, ProgressCallback progress, CompletionCallback completion)
+{
+    bool isRunning = false; long long elapsedTimeMSec = 0;
+    return EncryptFileWithCallback(algId, inputFile, outputFile, password, start, progress, completion, isRunning, elapsedTimeMSec);
+}
+
+int CCryptoHandler::DecryptFileWithCallback(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password,
+    StartCallback start, ProgressCallback progress, CompletionCallback completion)
+{
+    bool isRunning = false; long long elapsedTimeMSec = 0;
+    return DecryptFileWithCallback(algId, inputFile, outputFile, password, start, progress, completion, isRunning, elapsedTimeMSec);
+}
+
+int CCryptoHandler::HashFileWithCallback(ALG_ID algId, const std::string& inputFile, std::string& outputHash,
+    StartCallback start, ProgressCallback progress, CompletionCallback completion)
+{
+    bool isRunning = false; long long elapsedTimeMSec = 0;
+    return HashFileWithCallback(algId, inputFile, outputHash, start, progress, completion, isRunning, elapsedTimeMSec);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------
