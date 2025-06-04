@@ -1,8 +1,10 @@
 ﻿#include "CryptoHandler.h"
 #include <iostream>
 
-namespace {
-    const std::map<ALG_ID, CCryptoHandler::AlgorithmInfo> SUPPORTED_ALGORITHMS = {
+namespace 
+{
+    const std::map<ALG_ID, CCryptoHandler::AlgorithmInfo> SUPPORTED_ALGORITHMS = 
+    {
         // Encryption algorithms
         { CALG_AES_128, { CALG_AES_128, 128, 128, CCryptoHandler::ENCRYPTION, "AES-128" } },
         { CALG_AES_192, { CALG_AES_192, 192, 128, CCryptoHandler::ENCRYPTION, "AES-192" } },
@@ -35,6 +37,7 @@ bool CCryptoHandler::IsRunning() const
     return m_isRunning;
 }
 
+//--------------------------------------------------------------------------------------------------------------------------------------------------
 HCRYPTPROV CCryptoHandler::GetCryptProvider() const
 {
     HCRYPTPROV hProv = 0;
@@ -78,106 +81,7 @@ bool CCryptoHandler::ValidateAlgorithm(ALG_ID algId, AlgorithmType expectedType)
     return it->second.type == expectedType;
 }
 
-// Placeholder implementations for the main methods
-int CCryptoHandler::EncryptFile(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password)
-{
-    std::ifstream in(inputFile, std::ios::binary);
-    if (!in) return -1;
-
-    std::vector<BYTE> inputBuffer((std::istreambuf_iterator<char>(in)), {});
-    in.close();
-
-    std::vector<BYTE> encryptedBuffer;
-    int result = EncryptBuffer(algId, inputBuffer, encryptedBuffer, password);
-    if (result < 0) {
-        return result;
-    }
-
-    std::ofstream out(outputFile, std::ios::binary);
-    if (!out) return -1;
-
-    out.write(reinterpret_cast<const char*>(encryptedBuffer.data()), encryptedBuffer.size());
-    out.close();
-
-    return 0;
-}
-
-int CCryptoHandler::DecryptFile(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password)
-{
-    std::ifstream in(inputFile, std::ios::binary);
-    if (!in) return -1;
-
-    std::vector<BYTE> encryptedBuffer((std::istreambuf_iterator<char>(in)), {});
-    in.close();
-
-    std::vector<BYTE> decryptedBuffer;
-    int result = DecryptBuffer(algId, encryptedBuffer, decryptedBuffer, password);
-    if (result < 0) {
-        return result;
-    }
-
-    std::ofstream out(outputFile, std::ios::binary);
-    if (!out) return -1;
-
-    out.write(reinterpret_cast<const char*>(decryptedBuffer.data()), decryptedBuffer.size());
-    out.close();
-
-    return 0;
-}
-
-int CCryptoHandler::HashFile(ALG_ID algId, const std::string& inputFile, std::string& outputHash)
-{
-    std::ifstream in(inputFile, std::ios::binary);
-    if (!in) return -1;
-
-    std::vector<BYTE> inputBuffer((std::istreambuf_iterator<char>(in)), {});
-    in.close();
-
-    return HashBuffer(algId, inputBuffer, outputHash);
-}
-
-int CCryptoHandler::EncryptString(ALG_ID algId, const std::string& password, const std::string& input, std::string& output)
-{
-    std::vector<BYTE> inputBuffer(input.begin(), input.end());
-    std::vector<BYTE> encryptedBuffer;
-
-    int result = EncryptBuffer(algId, inputBuffer, encryptedBuffer, password);
-    if (result < 0) {
-        return result;
-    }
-
-    // Base64Encode işlemi BYTE vector üzerinden yapıldı
-    output = Base64Encode(encryptedBuffer);
-
-    return 0;
-}
-
-int CCryptoHandler::DecryptString(ALG_ID algId, const std::string& password, const std::string& input, std::string& output)
-{
-    std::vector<BYTE> encryptedBuffer = Base64Decode(input);
-    if (encryptedBuffer.empty()) {
-        return -1;
-    }
-
-    std::vector<BYTE> decryptedBuffer;
-
-    int result = DecryptBuffer(algId, encryptedBuffer, decryptedBuffer, password);
-    if (result < 0) {
-        return result;
-    }
-
-    output.assign(decryptedBuffer.begin(), decryptedBuffer.end());
-
-    return 0;
-}
-
-
-int CCryptoHandler::HashString(ALG_ID algId, const std::string& input, std::string& outputHash)
-{
-    std::vector<BYTE> inputBuffer(input.begin(), input.end());
-    return HashBuffer(algId, inputBuffer, outputHash);
-}
-
+//--------------------------------------------------------------------------------------------------------------------------------------------------
 int CCryptoHandler::EncryptBuffer(ALG_ID algId, const std::vector<BYTE>& input, std::vector<BYTE>& encryptedOutput, const std::string& password)
 {
     m_isRunning = true;
@@ -314,74 +218,109 @@ int CCryptoHandler::HashBuffer(ALG_ID algId, const std::vector<BYTE>& input, std
     return 0;
 }
 
-std::string CCryptoHandler::Base64Encode(const std::vector<BYTE>& input)
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+int CCryptoHandler::EncryptString(ALG_ID algId, const std::string& password, const std::string& input, std::string& output)
 {
-    DWORD outputLength = 0;
-    if (!CryptBinaryToStringA(input.data(), static_cast<DWORD>(input.size()), CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, NULL, &outputLength)) {
-        return "";
+    std::vector<BYTE> inputBuffer(input.begin(), input.end());
+    std::vector<BYTE> encryptedBuffer;
+
+    int result = EncryptBuffer(algId, inputBuffer, encryptedBuffer, password);
+    if (result < 0) {
+        return result;
     }
 
-    std::string encodedString(outputLength, '\0');
-    if (!CryptBinaryToStringA(input.data(), static_cast<DWORD>(input.size()), CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, &encodedString[0], &outputLength)) {
-        return "";
+    // Base64Encode işlemi BYTE vector üzerinden yapıldı
+    output = Base64Encode(encryptedBuffer);
+
+    return 0;
+}
+
+int CCryptoHandler::DecryptString(ALG_ID algId, const std::string& password, const std::string& input, std::string& output)
+{
+    std::vector<BYTE> encryptedBuffer = Base64Decode(input);
+    if (encryptedBuffer.empty()) {
+        return -1;
     }
 
-    return encodedString;
-}
+    std::vector<BYTE> decryptedBuffer;
 
-std::vector<BYTE> CCryptoHandler::Base64Decode(const std::string& input)
-{
-    DWORD outputLength = 0;
-    if (!CryptStringToBinaryA(input.c_str(), static_cast<DWORD>(input.size()), CRYPT_STRING_BASE64, NULL, &outputLength, NULL, NULL)) {
-        return {};
+    int result = DecryptBuffer(algId, encryptedBuffer, decryptedBuffer, password);
+    if (result < 0) {
+        return result;
     }
 
-    std::vector<BYTE> decodedData(outputLength);
-    if (!CryptStringToBinaryA(input.c_str(), static_cast<DWORD>(input.size()), CRYPT_STRING_BASE64, decodedData.data(), &outputLength, NULL, NULL)) {
-        return {};
+    output.assign(decryptedBuffer.begin(), decryptedBuffer.end());
+
+    return 0;
+}
+
+int CCryptoHandler::HashString(ALG_ID algId, const std::string& input, std::string& outputHash)
+{
+    std::vector<BYTE> inputBuffer(input.begin(), input.end());
+    return HashBuffer(algId, inputBuffer, outputHash);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+int CCryptoHandler::EncryptFile(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password)
+{
+    std::ifstream in(inputFile, std::ios::binary);
+    if (!in) return -1;
+
+    std::vector<BYTE> inputBuffer((std::istreambuf_iterator<char>(in)), {});
+    in.close();
+
+    std::vector<BYTE> encryptedBuffer;
+    int result = EncryptBuffer(algId, inputBuffer, encryptedBuffer, password);
+    if (result < 0) {
+        return result;
     }
 
-    return decodedData;
+    std::ofstream out(outputFile, std::ios::binary);
+    if (!out) return -1;
+
+    out.write(reinterpret_cast<const char*>(encryptedBuffer.data()), encryptedBuffer.size());
+    out.close();
+
+    return 0;
 }
 
-std::vector<BYTE> CCryptoHandler::StringToBytes(const std::string& str)
+int CCryptoHandler::DecryptFile(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password)
 {
-    return std::vector<BYTE>(str.begin(), str.end());
-}
+    std::ifstream in(inputFile, std::ios::binary);
+    if (!in) return -1;
 
-std::string CCryptoHandler::BytesToString(const std::vector<BYTE>& bytes)
-{
-    return std::string(bytes.begin(), bytes.end());
-}
+    std::vector<BYTE> encryptedBuffer((std::istreambuf_iterator<char>(in)), {});
+    in.close();
 
-std::string CCryptoHandler::GetLastErrorString()
-{
-    DWORD errorCode = GetLastError();
-    if (errorCode == 0) {
-        return "No error";
+    std::vector<BYTE> decryptedBuffer;
+    int result = DecryptBuffer(algId, encryptedBuffer, decryptedBuffer, password);
+    if (result < 0) {
+        return result;
     }
 
-    LPSTR messageBuffer = nullptr;
-    size_t size = FormatMessageA(
-        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-        NULL,
-        errorCode,
-        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-        (LPSTR)&messageBuffer,
-        0,
-        NULL
-    );
+    std::ofstream out(outputFile, std::ios::binary);
+    if (!out) return -1;
 
-    std::string message(messageBuffer, size);
-    LocalFree(messageBuffer);
+    out.write(reinterpret_cast<const char*>(decryptedBuffer.data()), decryptedBuffer.size());
+    out.close();
 
-    return message;
+    return 0;
 }
 
-int CCryptoHandler::EncryptFileWithCallback(ALG_ID algId, const std::string& inputFile,
-    const std::string& outputFile, const std::string& password,
-    StartCallback start, ProgressCallback progress,
-    CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec)
+int CCryptoHandler::HashFile(ALG_ID algId, const std::string& inputFile, std::string& outputHash)
+{
+    std::ifstream in(inputFile, std::ios::binary);
+    if (!in) return -1;
+
+    std::vector<BYTE> inputBuffer((std::istreambuf_iterator<char>(in)), {});
+    in.close();
+
+    return HashBuffer(algId, inputBuffer, outputHash);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+int CCryptoHandler::EncryptFileWithCallback(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password,
+    StartCallback start, ProgressCallback progress, CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec)
 {
     isRunning = true; // hemen ata (main thread)
 
@@ -446,10 +385,8 @@ int CCryptoHandler::EncryptFileWithCallback(ALG_ID algId, const std::string& inp
     return 0;
 }
 
-int CCryptoHandler::DecryptFileWithCallback(ALG_ID algId, const std::string& inputFile,
-    const std::string& outputFile, const std::string& password,
-    StartCallback start, ProgressCallback progress,
-    CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec)
+int CCryptoHandler::DecryptFileWithCallback(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password,
+    StartCallback start, ProgressCallback progress, CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec)
 {
     isRunning = true; // hemen ata (main thread)
 
@@ -515,8 +452,7 @@ int CCryptoHandler::DecryptFileWithCallback(ALG_ID algId, const std::string& inp
 }
 
 int CCryptoHandler::HashFileWithCallback(ALG_ID algId, const std::string& inputFile, std::string& outputHash,
-    StartCallback start, ProgressCallback progress,
-    CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec)
+    StartCallback start, ProgressCallback progress, CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec)
 {
     isRunning = true; // hemen ata (main thread)
 
@@ -564,10 +500,9 @@ int CCryptoHandler::HashFileWithCallback(ALG_ID algId, const std::string& inputF
     return 0;
 }
 
-int CCryptoHandler::EncryptFileAsync(ALG_ID algId, const std::string& inputFile,
-    const std::string& outputFile, const std::string& password,
-    StartCallback start, ProgressCallback progress,
-    CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec)
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+int CCryptoHandler::EncryptFileAsync(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password,
+    StartCallback start, ProgressCallback progress, CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec)
 {
     isRunning = true; // hemen ata (main thread)
 
@@ -638,10 +573,8 @@ int CCryptoHandler::EncryptFileAsync(ALG_ID algId, const std::string& inputFile,
         return 0;
 }
 
-int CCryptoHandler::DecryptFileAsync(ALG_ID algId, const std::string& inputFile,
-    const std::string& outputFile, const std::string& password,
-    StartCallback start, ProgressCallback progress,
-    CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec)
+int CCryptoHandler::DecryptFileAsync(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password,
+    StartCallback start, ProgressCallback progress, CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec)
 {
     isRunning = true; // hemen ata (main thread)
 
@@ -713,8 +646,7 @@ int CCryptoHandler::DecryptFileAsync(ALG_ID algId, const std::string& inputFile,
 }
 
 int CCryptoHandler::HashFileAsync(ALG_ID algId, const std::string& inputFile, std::string& outputHash,
-    StartCallback start, ProgressCallback progress,
-    CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec)
+    StartCallback start, ProgressCallback progress, CompletionCallback completion, bool& isRunning, long long& elapsedTimeMSec)
 {
     isRunning = true; // hemen ata (main thread)
 
@@ -769,6 +701,72 @@ int CCryptoHandler::HashFileAsync(ALG_ID algId, const std::string& inputFile, st
         return 0;
 }
 
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+std::string CCryptoHandler::Base64Encode(const std::vector<BYTE>& input)
+{
+    DWORD outputLength = 0;
+    if (!CryptBinaryToStringA(input.data(), static_cast<DWORD>(input.size()), CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, NULL, &outputLength)) {
+        return "";
+    }
+
+    std::string encodedString(outputLength, '\0');
+    if (!CryptBinaryToStringA(input.data(), static_cast<DWORD>(input.size()), CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF, &encodedString[0], &outputLength)) {
+        return "";
+    }
+
+    return encodedString;
+}
+
+std::vector<BYTE> CCryptoHandler::Base64Decode(const std::string& input)
+{
+    DWORD outputLength = 0;
+    if (!CryptStringToBinaryA(input.c_str(), static_cast<DWORD>(input.size()), CRYPT_STRING_BASE64, NULL, &outputLength, NULL, NULL)) {
+        return {};
+    }
+
+    std::vector<BYTE> decodedData(outputLength);
+    if (!CryptStringToBinaryA(input.c_str(), static_cast<DWORD>(input.size()), CRYPT_STRING_BASE64, decodedData.data(), &outputLength, NULL, NULL)) {
+        return {};
+    }
+
+    return decodedData;
+}
+
+std::vector<BYTE> CCryptoHandler::StringToBytes(const std::string& str)
+{
+    return std::vector<BYTE>(str.begin(), str.end());
+}
+
+std::string CCryptoHandler::BytesToString(const std::vector<BYTE>& bytes)
+{
+    return std::string(bytes.begin(), bytes.end());
+}
+
+std::string CCryptoHandler::GetLastErrorString()
+{
+    DWORD errorCode = GetLastError();
+    if (errorCode == 0) {
+        return "No error";
+    }
+
+    LPSTR messageBuffer = nullptr;
+    size_t size = FormatMessageA(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL,
+        errorCode,
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        (LPSTR)&messageBuffer,
+        0,
+        NULL
+    );
+
+    std::string message(messageBuffer, size);
+    LocalFree(messageBuffer);
+
+    return message;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------
 long long CCryptoHandler::getElapsedTimeMSec(std::chrono::time_point<std::chrono::steady_clock>& m_startTime, std::chrono::time_point<std::chrono::steady_clock>& m_currentTime) const
 {
     return std::chrono::duration_cast<std::chrono::milliseconds>(m_currentTime - m_startTime).count();
@@ -780,4 +778,3 @@ long long CCryptoHandler::getElapsedTimeMSecUpToNow(std::chrono::time_point<std:
 
     return getElapsedTimeMSec(m_startTime, now);
 }
-
