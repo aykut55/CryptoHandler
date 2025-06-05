@@ -303,19 +303,240 @@ int CCryptoHandler::HashBufferWithCallback(ALG_ID algId, const std::vector<BYTE>
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------
-int CCryptoHandler::EncryptBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::vector<BYTE>& encryptedOutput, const std::string& password, bool& isRunning, long long& elapsedTimeMSec, StartCallback start, ProgressCallback progress, CompletionCallback completion, ErrorCallback error)
+int CCryptoHandler::EncryptBufferWithCallback(ALG_ID algId, const std::string& password, const std::vector<BYTE>& input, 
+    std::vector<BYTE>& encryptedOutput, bool* pIsRunning, long long* pElapsedTimeMSec, int* pErrorCode, 
+    StartCallback start, ProgressCallback progress, CompletionCallback completion, ErrorCallback error)
 {
-    return 0;
+    auto startTime = std::chrono::steady_clock::now();
+
+    if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
+    if (pIsRunning) *pIsRunning = true;
+
+    if (pErrorCode) *pErrorCode = CryptoResult::Success;
+
+    if (start) start();
+
+    HCRYPTPROV hProv = GetCryptProvider();
+    if (!hProv) {
+        if (pIsRunning) *pIsRunning = false;
+        if (pErrorCode) *pErrorCode = -1;
+        return -1;
+    }
+
+    HCRYPTKEY hKey = GenerateKey(algId, hProv, password);
+    if (!hKey) {
+        CryptReleaseContext(hProv, 0);
+        if (pIsRunning) *pIsRunning = false;
+        if (pErrorCode) *pErrorCode = -2;
+        return -2;
+    }
+
+    const size_t chunkSize = 4096;
+    size_t totalInputSize = input.size();
+    size_t totalProcessed = 0;
+
+    std::vector<BYTE> buffer(chunkSize + 64); // padding için fazladan alan
+    encryptedOutput.clear();
+
+    while (totalProcessed < totalInputSize) {
+        DWORD thisChunkSize = static_cast<DWORD>(std::min(chunkSize, totalInputSize - totalProcessed));
+        DWORD encryptedChunkSize = thisChunkSize;
+
+        memcpy(buffer.data(), input.data() + totalProcessed, thisChunkSize);
+        BOOL isFinal = (totalProcessed + thisChunkSize >= totalInputSize) ? TRUE : FALSE;
+
+        DWORD bufferSize = thisChunkSize;
+        if (!CryptEncrypt(hKey, 0, isFinal, 0, nullptr, &bufferSize, static_cast<DWORD>(buffer.size()))) {
+            CryptDestroyKey(hKey);
+            CryptReleaseContext(hProv, 0);
+            if (pIsRunning) *pIsRunning = false;
+            if (pErrorCode) *pErrorCode = -3;
+            return -3;
+        }
+
+        encryptedChunkSize = thisChunkSize;
+        if (!CryptEncrypt(hKey, 0, isFinal, 0, buffer.data(), &encryptedChunkSize, static_cast<DWORD>(buffer.size()))) {
+            CryptDestroyKey(hKey);
+            CryptReleaseContext(hProv, 0);
+            if (pIsRunning) *pIsRunning = false;
+            if (pErrorCode) *pErrorCode = -4;
+            return -4;
+        }
+
+        encryptedOutput.insert(encryptedOutput.end(), buffer.begin(), buffer.begin() + encryptedChunkSize);
+        totalProcessed += thisChunkSize;
+
+        if (progress) progress(totalProcessed, totalInputSize);
+    }
+
+    CryptDestroyKey(hKey);
+    CryptReleaseContext(hProv, 0);
+
+    if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
+    if (pIsRunning) *pIsRunning = false;
+
+    if (pErrorCode) *pErrorCode = CryptoResult::Success;
+
+    if (completion) completion(CryptoResult::Success);
+
+    return CryptoResult::Success;
 }
 
-int CCryptoHandler::DecryptBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput, const std::string& password, bool& isRunning, long long& elapsedTimeMSec, StartCallback start, ProgressCallback progress, CompletionCallback completion, ErrorCallback error)
+int CCryptoHandler::DecryptBufferWithCallback(ALG_ID algId, const std::string& password, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput, bool* pIsRunning, long long* pElapsedTimeMSec, int* pErrorCode, StartCallback start, ProgressCallback progress, CompletionCallback completion, ErrorCallback error)
 {
-    return 0;
+    auto startTime = std::chrono::steady_clock::now();
+
+    if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+    if (pIsRunning) *pIsRunning = true;
+    if (pErrorCode) *pErrorCode = CryptoResult::Success;
+    if (start) start();
+
+    HCRYPTPROV hProv = GetCryptProvider();
+    if (!hProv) {
+        if (pIsRunning) *pIsRunning = false;
+        if (pErrorCode) *pErrorCode = -1;
+        if (error) error(-1);
+        return -1;
+    }
+
+    HCRYPTKEY hKey = GenerateKey(algId, hProv, password);
+    if (!hKey) {
+        CryptReleaseContext(hProv, 0);
+        if (pIsRunning) *pIsRunning = false;
+        if (pErrorCode) *pErrorCode = -2;
+        if (error) error(-2);
+        return -2;
+    }
+
+    const size_t chunkSize = 4096;
+    size_t totalInputSize = encryptedInput.size();
+    size_t totalProcessed = 0;
+
+    std::vector<BYTE> buffer(chunkSize + 64); // padding için
+    decryptedOutput.clear();
+
+    while (totalProcessed < totalInputSize) {
+        size_t remaining = totalInputSize - totalProcessed;
+        DWORD thisChunkSize = static_cast<DWORD>(remaining < chunkSize ? remaining : chunkSize);
+        DWORD decryptedChunkSize = thisChunkSize;
+
+        memcpy(buffer.data(), encryptedInput.data() + totalProcessed, thisChunkSize);
+
+        BOOL isFinal = (totalProcessed + thisChunkSize >= totalInputSize) ? TRUE : FALSE;
+
+        if (!CryptDecrypt(hKey, 0, isFinal, 0, buffer.data(), &decryptedChunkSize)) {
+            CryptDestroyKey(hKey);
+            CryptReleaseContext(hProv, 0);
+            if (pIsRunning) *pIsRunning = false;
+            if (pErrorCode) *pErrorCode = -3;
+            if (error) error(-3);
+            return -3;
+        }
+
+        decryptedOutput.insert(decryptedOutput.end(), buffer.begin(), buffer.begin() + decryptedChunkSize);
+        totalProcessed += thisChunkSize;
+
+        if (progress) progress(totalProcessed, totalInputSize);
+    }
+
+    CryptDestroyKey(hKey);
+    CryptReleaseContext(hProv, 0);
+
+    if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+    if (pIsRunning) *pIsRunning = false;
+    if (pErrorCode) *pErrorCode = CryptoResult::Success;
+    if (completion) completion(CryptoResult::Success);
+
+    return CryptoResult::Success;
 }
 
-int CCryptoHandler::HashBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::string& outputHash, bool& isRunning, long long& elapsedTimeMSec, StartCallback start, ProgressCallback progress, CompletionCallback completion, ErrorCallback error)
+int CCryptoHandler::HashBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::vector<BYTE>& outputHashBytes, std::string& outputHash, bool* pIsRunning, long long* pElapsedTimeMSec, int* pErrorCode, StartCallback start, ProgressCallback progress, CompletionCallback completion, ErrorCallback error)
 {
-    return 0;
+    auto startTime = std::chrono::steady_clock::now();
+
+    if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+    if (pIsRunning) *pIsRunning = true;
+    if (pErrorCode) *pErrorCode = CryptoResult::Success;
+    if (start) start();
+
+    HCRYPTPROV hProv = GetCryptProvider();
+    if (!hProv) {
+        if (pIsRunning) *pIsRunning = false;
+        if (pErrorCode) *pErrorCode = -1;
+        if (error) error(-1);
+        return -1;
+    }
+
+    HCRYPTHASH hHash;
+    if (!CryptCreateHash(hProv, algId, 0, 0, &hHash)) {
+        CryptReleaseContext(hProv, 0);
+        if (pIsRunning) *pIsRunning = false;
+        if (pErrorCode) *pErrorCode = -2;
+        if (error) error(-2);
+        return -2;
+    }
+
+    const size_t chunkSize = 4096;
+    size_t totalInputSize = input.size();
+    size_t totalProcessed = 0;
+
+    while (totalProcessed < totalInputSize) {
+        size_t remaining = totalInputSize - totalProcessed;
+        DWORD thisChunkSize = static_cast<DWORD>((remaining < chunkSize) ? remaining : chunkSize);
+
+        if (!CryptHashData(hHash, input.data() + totalProcessed, thisChunkSize, 0)) {
+            CryptDestroyHash(hHash);
+            CryptReleaseContext(hProv, 0);
+            if (pIsRunning) *pIsRunning = false;
+            if (pErrorCode) *pErrorCode = -3;
+            if (error) error(-3);
+            return -3;
+        }
+
+        totalProcessed += thisChunkSize;
+        if (progress) progress(totalProcessed, totalInputSize);
+    }
+
+    // Hash boyutu al
+    DWORD hashLen = 0;
+    DWORD lenSize = sizeof(DWORD);
+    if (!CryptGetHashParam(hHash, HP_HASHSIZE, reinterpret_cast<BYTE*>(&hashLen), &lenSize, 0)) {
+        CryptDestroyHash(hHash);
+        CryptReleaseContext(hProv, 0);
+        if (pIsRunning) *pIsRunning = false;
+        if (pErrorCode) *pErrorCode = -4;
+        if (error) error(-4);
+        return -4;
+    }
+
+    outputHashBytes.resize(hashLen);
+    if (!CryptGetHashParam(hHash, HP_HASHVAL, outputHashBytes.data(), &hashLen, 0)) {
+        CryptDestroyHash(hHash);
+        CryptReleaseContext(hProv, 0);
+        if (pIsRunning) *pIsRunning = false;
+        if (pErrorCode) *pErrorCode = -5;
+        if (error) error(-5);
+        return -5;
+    }
+
+    // Hash verisini hex string'e çevir
+    std::ostringstream oss;
+    for (BYTE b : outputHashBytes) {
+        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(b);
+    }
+    outputHash = oss.str();
+
+    CryptDestroyHash(hHash);
+    CryptReleaseContext(hProv, 0);
+
+    if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+    if (pIsRunning) *pIsRunning = false;
+    if (pErrorCode) *pErrorCode = CryptoResult::Success;
+    if (completion) completion(CryptoResult::Success);
+
+    return CryptoResult::Success;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------

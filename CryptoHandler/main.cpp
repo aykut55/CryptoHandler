@@ -417,7 +417,7 @@ void FileEncryptionDecryptionHashAsenkronExample(CCryptoHandler& handler, ALG_ID
     std::cout << std::endl;
 }
 
-int main()
+int main_()
 {
     // Cryptographic API Prototypes and Definitions
 	CCryptoHandler cryptoHandler;
@@ -617,5 +617,207 @@ int main()
     inputFileName = "../input_binary.rar";
     inputFileName = "../input_text.txt";
     FileEncryptionDecryptionHashAsenkronExample(cryptoHandler, CALG_AES_256, CALG_SHA_256, password, inputFileName, encryptedFileName, decryptedFileName);
+    std::cout << std::endl;
+
+    return 0;
+}
+
+void OnStart() {
+    std::cout << "Process started...\n";
+}
+
+void OnProgress(size_t current, size_t total) {
+    std::cout << "Progress: " << current << " / " << total << "\n";
+}
+
+void OnCompletion(int result) {
+    std::cout << "Completed with result: " << result << "\n";
+}
+
+void OnError(int errorCode) {
+    std::cerr << "Error occurred! Code: " << errorCode << "\n";
+}
+
+std::vector<BYTE> GenerateBytes(size_t byteCount, int flag = 0, BYTE fillByte = 0xAA)
+{
+    std::vector<BYTE> inputData(byteCount);
+
+    if (flag == 0) {
+        // Sabit değerle doldur
+        std::fill(inputData.begin(), inputData.end(), fillByte);
+    }
+    else {
+        // Rastgele veri üret
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<int> dist(0, 255);
+
+        for (size_t i = 0; i < byteCount; ++i) {
+            inputData[i] = static_cast<BYTE>(dist(gen));
+        }
+    }
+
+    return inputData;
+}
+/*
+// 4096 baytlık sabit değerli veri (0xCC ile doldur)
+std::vector<BYTE> fixedData = GenerateBytes(4096, 0, 0xCC);
+
+// 8192 baytlık rastgele veri
+std::vector<BYTE> randomData = GenerateBytes(8192, 1);
+*/
+
+int main()
+{
+    CCryptoHandler crypto;
+
+    std::string password = "test123";
+    ALG_ID cryptoAlgId = CALG_AES_256;
+    ALG_ID hashAlgId = CALG_SHA_256;
+
+    // -------------------------------------------------------------------------------------
+    std::cout << std::endl;
+    std::cout << "============================================================================" << std::endl;
+    std::cout << std::endl;
+    
+    std::string inputString = "Hello, this is a test message to encrypt, decrypt and hash!";
+
+    std::vector<BYTE> inputData(inputString.begin(), inputString.end());
+    std::vector<BYTE> encryptedData;
+    std::vector<BYTE> decryptedData;
+    std::vector<BYTE> outputData;
+    std::string outputString = "";
+
+    std::vector<BYTE> hashData;
+    std::string hashString = "";
+    // -------------------------------------------------------------------------------------
+
+    bool isRunning = false;
+    long long elapsedTime = 0;
+    int errorCode = 0;
+
+    // -------------------------------------------------------------------------------------
+    std::cout << "[*] inputString: " << inputString << std::endl;
+
+    // -------------------------------------------------------------------------------------
+    std::cout << std::endl;
+    std::cout << "[*] Hashing..." << std::endl;
+    crypto.HashBufferWithCallback(hashAlgId, inputData, hashData, hashString, &isRunning, &elapsedTime, &errorCode,
+        OnStart, OnProgress, OnCompletion, OnError);
+
+    std::cout << std::endl;
+    std::cout << "[*] Hash result (string): " << hashString << std::endl;
+/*
+    std::cout << "[*] Hash result (bytes) : ";
+    for (BYTE b : hashData) {
+        std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(b) << " ";
+    }
+    std::cout << std::dec << std::endl; // sonra desimale dönmek için
+*/
+    // -------------------------------------------------------------------------------------
+    std::cout << std::endl;
+    std::cout << "[*] Encrypting..." << std::endl;
+    crypto.EncryptBufferWithCallback(cryptoAlgId, password, inputData, encryptedData, &isRunning, &elapsedTime, &errorCode,
+        OnStart, OnProgress, OnCompletion, OnError);
+
+    std::cout << std::endl;
+    std::cout << "[*] Decrypting..." << std::endl;
+    crypto.DecryptBufferWithCallback(cryptoAlgId, password, encryptedData, decryptedData, &isRunning, &elapsedTime, &errorCode,
+        OnStart, OnProgress, OnCompletion, OnError);
+
+    outputData = decryptedData;
+    outputString = std::string(outputData.begin(), outputData.end());
+
+    std::cout << std::endl;
+    std::cout << "    Karsilastirma ve dogrulama" << "\t(inputString == outputString) " << std::endl;
+    std::cout << std::endl;
+
+    // Karşılaştırma ve doğrulama
+    if (inputString == outputString) {
+        std::cout << "[+] Decryption successful. Original and decrypted texts match.\n";
+    }
+    else {
+        std::cerr << "[-] Decryption failed! Original and decrypted texts do not match.\n";
+        std::cerr << "Original : " << inputString << "\n";
+        std::cerr << "Decrypted: " << outputString << "\n";
+    }
+
+    std::cout << std::endl;
+    std::cout << "[*] Encrypted String [ inputString  ] : " << inputString << std::endl;
+    std::cout << "[*] Decrypted String [ outputString ] : " << outputString << std::endl;
+
+
+    std::vector<BYTE> hashData1;
+    std::vector<BYTE> hashData2;
+    std::string hashString1 = "";
+    std::string hashString2 = "";
+    std::cout << std::endl;
+    crypto.HashBufferWithCallback(hashAlgId, inputData, hashData1, hashString1, &isRunning, &elapsedTime, &errorCode,
+        OnStart, OnProgress, OnCompletion, OnError);
+
+    std::cout << std::endl;
+    crypto.HashBufferWithCallback(hashAlgId, outputData, hashData2, hashString2, &isRunning, &elapsedTime, &errorCode,
+        OnStart, OnProgress, OnCompletion, OnError);
+
+    std::cout << std::endl;
+    std::cout << "    Karsilastirma ve dogrulama" << "\t(input hashString == output hashString) " << std::endl;
+    std::cout << std::endl;
+
+    // Karşılaştırma ve doğrulama
+    if (hashString1 == hashString2) {
+        std::cout << "[+] Decryption successful. Original and decrypted texts match.\n";
+    }
+    else {
+        std::cerr << "[-] Decryption failed! Original and decrypted texts do not match.\n";
+        std::cerr << "Original : " << hashString1 << "\n";
+        std::cerr << "Decrypted: " << hashString2 << "\n";
+    }
+
+    std::cout << std::endl;
+    std::cout << "[*] Hash String [ inputString  ] : " << hashString1 << std::endl;
+    std::cout << "[*] Hash String [ outputString ] : " << hashString2 << std::endl;
+
+
+    std::cout << std::endl;
+    std::cout << "    Karsilastirma ve dogrulama" << "\t(byte-by-byte comparison, inputData - decryptedData) " << std::endl;
+    std::cout << std::endl;
+
+    // Karşılaştırma ve doğrulama
+    bool allBytesMatch = true;
+    size_t mismatchIndex = 0;
+    size_t minSize = std::min(inputData.size(), decryptedData.size());
+
+    for (size_t i = 0; i < minSize; ++i) {
+        if (inputData[i] != decryptedData[i]) {
+            allBytesMatch = false;
+            mismatchIndex = i;
+            break;
+        }
+    }
+
+    if (allBytesMatch && inputData.size() == decryptedData.size()) {
+        std::cout << "[+] inputData vs decryptedData byte-by-byte comparison passed: All bytes match.\n";
+    }
+    else {
+        std::cerr << "[-] inputData vs decryptedData comparison failed!\n";
+        if (!allBytesMatch) {
+            std::cerr << "Mismatch at byte index " << mismatchIndex
+                << " (input: 0x" << std::hex << static_cast<int>(inputData[mismatchIndex])
+                << ", decrypted: 0x" << static_cast<int>(decryptedData[mismatchIndex]) << std::dec << ")\n";
+        }
+        else {
+            std::cerr << "Length mismatch (input size: " << inputData.size()
+                << ", decrypted size: " << decryptedData.size() << ")\n";
+        }
+    }
+
+
+    std::cout << std::endl;
+    std::cout << "============================================================================" << std::endl;
+    std::cout << std::endl;
+
+    // -------------------------------------------------------------------------------------
+    std::cout << std::endl;
+    std::cout << std::endl;
     std::cout << std::endl;
 }

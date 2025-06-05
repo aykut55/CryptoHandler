@@ -1,7 +1,9 @@
 #ifndef CryptoHandlerH
 #define CryptoHandlerH
 
+#define NOMINMAX
 #include <windows.h>
+
 #include <wincrypt.h>
 #include <string>
 #include <vector>
@@ -10,10 +12,12 @@
 #include <chrono>
 #include <thread>
 #include <atomic>
-#include <iomanip>
-#include <sstream>
+#include <iomanip>   // std::hex, std::setw, std::setfill
+#include <sstream>   // std::ostringstream
 #include <fstream>
 #include <functional>
+#include <algorithm> // std::min
+#include <random>
 
 #pragma comment(lib, "crypt32.lib")
 
@@ -21,6 +25,11 @@ using StartCallback = std::function<void()>;
 using ProgressCallback = std::function<void(size_t bytesProcessed, size_t totalBytes)>;
 using CompletionCallback = std::function<void(int resultCode)>;
 using ErrorCallback = std::function<void(int resultCode)>;
+
+typedef enum CryptoResult {
+    Success = 0,
+    Error = -1
+} CryptoResult;
 
 class CCryptoHandler
 {
@@ -43,10 +52,9 @@ public:
     int DecryptBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput, const std::string& password);
     int HashBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::string& outputHash);
 
-    // bool& isRunning, long long& elapsedTimeMSec  leri pointer gecir...
-    int EncryptBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::vector<BYTE>& encryptedOutput, const std::string& password, bool& isRunning, long long& elapsedTimeMSec, StartCallback start = NULL, ProgressCallback progress = NULL, CompletionCallback completion = NULL, ErrorCallback error = NULL);
-    int DecryptBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput, const std::string& password, bool& isRunning, long long& elapsedTimeMSec, StartCallback start = NULL, ProgressCallback progress = NULL, CompletionCallback completion = NULL, ErrorCallback error = NULL);
-    int HashBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::string& outputHash, bool& isRunning, long long& elapsedTimeMSec, StartCallback start = NULL, ProgressCallback progress = NULL, CompletionCallback completion = NULL, ErrorCallback error = NULL);
+    int EncryptBufferWithCallback(ALG_ID algId, const std::string& password, const std::vector<BYTE>& input, std::vector<BYTE>& encryptedOutput, bool* pIsRunning = NULL, long long* pElapsedTimeMSec = NULL, int* pErrorCode = NULL, StartCallback start = NULL, ProgressCallback progress = NULL, CompletionCallback completion = NULL, ErrorCallback error = NULL);
+    int DecryptBufferWithCallback(ALG_ID algId, const std::string& password, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput,bool* pIsRunning = NULL, long long* pElapsedTimeMSec = NULL, int* pErrorCode = NULL, StartCallback start = NULL, ProgressCallback progress = NULL, CompletionCallback completion = NULL, ErrorCallback error = NULL);
+    int HashBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::vector<BYTE>& outputHashBytes, std::string& outputHash, bool* pIsRunning = NULL, long long* pElapsedTimeMSec = NULL, int* pErrorCode = NULL, StartCallback start = NULL, ProgressCallback progress = NULL, CompletionCallback completion = NULL, ErrorCallback error = NULL);
     
     //--------------------------------------------------------------------------------------------------------------------------------------------------
     // String operations
@@ -135,7 +143,6 @@ private:
     HCRYPTPROV GetCryptProvider() const;
     HCRYPTKEY GenerateKey(ALG_ID algId, HCRYPTPROV hProv, const std::string& password);
     bool ValidateAlgorithm(ALG_ID algId, AlgorithmType expectedType) const;
-    std::string HashData(ALG_ID algId, const BYTE* data, DWORD dataLen);
 
     long long getElapsedTimeMSec(std::chrono::time_point<std::chrono::steady_clock>& m_startTime, std::chrono::time_point<std::chrono::steady_clock>& m_currentTime) const;
     long long getElapsedTimeMSecUpToNow(std::chrono::time_point<std::chrono::steady_clock>& m_startTime) const;
