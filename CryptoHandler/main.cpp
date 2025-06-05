@@ -816,6 +816,109 @@ int main()
     std::cout << "============================================================================" << std::endl;
     std::cout << std::endl;
 
+    std::cout << std::endl;
+    std::cout << std::endl;
+    std::cout << std::endl;
+    std::cout << std::endl;
+    std::cout << std::endl;
+    std::cout << std::endl;
+
+    std::cout << std::endl;
+    std::cout << "============================================================================" << std::endl;
+    std::cout << std::endl;
+
+
+    // 8192 baytlık rastgele veri
+    std::vector<BYTE> randomData = GenerateBytes(8192, 1);
+
+    inputData = randomData;
+
+    std::cout << std::endl;
+    std::cout << "[*] Hashing..." << std::endl;
+    crypto.HashBufferWithCallback(hashAlgId, inputData, hashData, hashString, &isRunning, &elapsedTime, &errorCode,
+        OnStart, OnProgress, OnCompletion, OnError);
+
+    std::cout << std::endl;
+    std::cout << "[*] Hash result (string): " << hashString << std::endl;
+
+    std::cout << std::endl;
+    std::cout << "[*] Encrypting..." << std::endl;
+    crypto.EncryptBufferWithCallback(cryptoAlgId, password, inputData, encryptedData, &isRunning, &elapsedTime, &errorCode,
+        OnStart, OnProgress, OnCompletion, OnError);
+
+    std::cout << std::endl;
+    std::cout << "[*] Decrypting..." << std::endl;
+    crypto.DecryptBufferWithCallback(cryptoAlgId, password, encryptedData, decryptedData, &isRunning, &elapsedTime, &errorCode,
+        OnStart, OnProgress, OnCompletion, OnError);
+
+    outputData = decryptedData;
+
+    std::cout << std::endl;
+    crypto.HashBufferWithCallback(hashAlgId, inputData, hashData1, hashString1, &isRunning, &elapsedTime, &errorCode,
+        OnStart, OnProgress, OnCompletion, OnError);
+
+    std::cout << std::endl;
+    crypto.HashBufferWithCallback(hashAlgId, outputData, hashData2, hashString2, &isRunning, &elapsedTime, &errorCode,
+        OnStart, OnProgress, OnCompletion, OnError);
+
+    std::cout << std::endl;
+    std::cout << "    Karsilastirma ve dogrulama" << "\t(input hashString == output hashString) " << std::endl;
+    std::cout << std::endl;
+
+    // Karşılaştırma ve doğrulama
+    if (hashString1 == hashString2) {
+        std::cout << "[+] Decryption successful. Original and decrypted texts match.\n";
+    }
+    else {
+        std::cerr << "[-] Decryption failed! Original and decrypted texts do not match.\n";
+        std::cerr << "Original : " << hashString1 << "\n";
+        std::cerr << "Decrypted: " << hashString2 << "\n";
+    }
+
+    std::cout << std::endl;
+    std::cout << "[*] Hash String [ inputString  ] : " << hashString1 << std::endl;
+    std::cout << "[*] Hash String [ outputString ] : " << hashString2 << std::endl;
+    std::cout << std::endl;
+    std::cout << "    Karsilastirma ve dogrulama" << "\t(byte-by-byte comparison, inputData - decryptedData) " << std::endl;
+    std::cout << std::endl;
+
+    std::cout << std::endl;
+
+    // Karşılaştırma ve doğrulama
+    allBytesMatch = true;
+    mismatchIndex = 0;
+    minSize = std::min(inputData.size(), decryptedData.size());
+
+    for (size_t i = 0; i < minSize; ++i) {
+        if (inputData[i] != decryptedData[i]) {
+            allBytesMatch = false;
+            mismatchIndex = i;
+            break;
+        }
+    }
+
+    if (allBytesMatch && inputData.size() == decryptedData.size()) {
+        std::cout << "[+] inputData vs decryptedData byte-by-byte comparison passed: All bytes match.\n";
+    }
+    else {
+        std::cerr << "[-] inputData vs decryptedData comparison failed!\n";
+        if (!allBytesMatch) {
+            std::cerr << "Mismatch at byte index " << mismatchIndex
+                << " (input: 0x" << std::hex << static_cast<int>(inputData[mismatchIndex])
+                << ", decrypted: 0x" << static_cast<int>(decryptedData[mismatchIndex]) << std::dec << ")\n";
+        }
+        else {
+            std::cerr << "Length mismatch (input size: " << inputData.size()
+                << ", decrypted size: " << decryptedData.size() << ")\n";
+        }
+    }
+
+
+    std::cout << std::endl;
+    std::cout << "============================================================================" << std::endl;
+    std::cout << std::endl;
+
+
     // -------------------------------------------------------------------------------------
     std::cout << std::endl;
     std::cout << std::endl;
