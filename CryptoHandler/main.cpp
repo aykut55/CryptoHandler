@@ -692,6 +692,7 @@ int main()
     std::string hashString = "";
     // -------------------------------------------------------------------------------------
 
+    bool isStopRequested = false;
     bool isRunning = false;
     long long elapsedTime = 0;
     int errorCode = 0;
@@ -702,7 +703,7 @@ int main()
     // -------------------------------------------------------------------------------------
     std::cout << std::endl;
     std::cout << "[*] Hashing..." << std::endl;
-    crypto.HashBufferWithCallback(hashAlgId, inputData, hashData, hashString, &isRunning, &elapsedTime, &errorCode,
+    crypto.HashBufferWithCallback(hashAlgId, inputData, hashData, hashString, &isStopRequested, &isRunning, &elapsedTime, &errorCode,
         OnStart, OnProgress, OnCompletion, OnError);
 
     std::cout << std::endl;
@@ -717,12 +718,12 @@ int main()
     // -------------------------------------------------------------------------------------
     std::cout << std::endl;
     std::cout << "[*] Encrypting..." << std::endl;
-    crypto.EncryptBufferWithCallback(cryptoAlgId, password, inputData, encryptedData, &isRunning, &elapsedTime, &errorCode,
+    crypto.EncryptBufferWithCallback(cryptoAlgId, password, inputData, encryptedData, &isStopRequested, &isRunning, &elapsedTime, &errorCode,
         OnStart, OnProgress, OnCompletion, OnError);
 
     std::cout << std::endl;
     std::cout << "[*] Decrypting..." << std::endl;
-    crypto.DecryptBufferWithCallback(cryptoAlgId, password, encryptedData, decryptedData, &isRunning, &elapsedTime, &errorCode,
+    crypto.DecryptBufferWithCallback(cryptoAlgId, password, encryptedData, decryptedData, &isStopRequested, &isRunning, &elapsedTime, &errorCode,
         OnStart, OnProgress, OnCompletion, OnError);
 
     outputData = decryptedData;
@@ -752,11 +753,11 @@ int main()
     std::string hashString1 = "";
     std::string hashString2 = "";
     std::cout << std::endl;
-    crypto.HashBufferWithCallback(hashAlgId, inputData, hashData1, hashString1, &isRunning, &elapsedTime, &errorCode,
+    crypto.HashBufferWithCallback(hashAlgId, inputData, hashData1, hashString1, &isStopRequested, &isRunning, &elapsedTime, &errorCode,
         OnStart, OnProgress, OnCompletion, OnError);
 
     std::cout << std::endl;
-    crypto.HashBufferWithCallback(hashAlgId, outputData, hashData2, hashString2, &isRunning, &elapsedTime, &errorCode,
+    crypto.HashBufferWithCallback(hashAlgId, outputData, hashData2, hashString2, &isStopRequested, &isRunning, &elapsedTime, &errorCode,
         OnStart, OnProgress, OnCompletion, OnError);
 
     std::cout << std::endl;
@@ -835,7 +836,7 @@ int main()
 
     std::cout << std::endl;
     std::cout << "[*] Hashing..." << std::endl;
-    crypto.HashBufferWithCallback(hashAlgId, inputData, hashData, hashString, &isRunning, &elapsedTime, &errorCode,
+    crypto.HashBufferWithCallback(hashAlgId, inputData, hashData, hashString, &isStopRequested, &isRunning, &elapsedTime, &errorCode,
         OnStart, OnProgress, OnCompletion, OnError);
 
     std::cout << std::endl;
@@ -843,22 +844,22 @@ int main()
 
     std::cout << std::endl;
     std::cout << "[*] Encrypting..." << std::endl;
-    crypto.EncryptBufferWithCallback(cryptoAlgId, password, inputData, encryptedData, &isRunning, &elapsedTime, &errorCode,
+    crypto.EncryptBufferWithCallback(cryptoAlgId, password, inputData, encryptedData, &isStopRequested, &isRunning, &elapsedTime, &errorCode,
         OnStart, OnProgress, OnCompletion, OnError);
 
     std::cout << std::endl;
     std::cout << "[*] Decrypting..." << std::endl;
-    crypto.DecryptBufferWithCallback(cryptoAlgId, password, encryptedData, decryptedData, &isRunning, &elapsedTime, &errorCode,
+    crypto.DecryptBufferWithCallback(cryptoAlgId, password, encryptedData, decryptedData, &isStopRequested, &isRunning, &elapsedTime, &errorCode,
         OnStart, OnProgress, OnCompletion, OnError);
 
     outputData = decryptedData;
 
     std::cout << std::endl;
-    crypto.HashBufferWithCallback(hashAlgId, inputData, hashData1, hashString1, &isRunning, &elapsedTime, &errorCode,
+    crypto.HashBufferWithCallback(hashAlgId, inputData, hashData1, hashString1, &isStopRequested, &isRunning, &elapsedTime, &errorCode,
         OnStart, OnProgress, OnCompletion, OnError);
 
     std::cout << std::endl;
-    crypto.HashBufferWithCallback(hashAlgId, outputData, hashData2, hashString2, &isRunning, &elapsedTime, &errorCode,
+    crypto.HashBufferWithCallback(hashAlgId, outputData, hashData2, hashString2, &isStopRequested, &isRunning, &elapsedTime, &errorCode,
         OnStart, OnProgress, OnCompletion, OnError);
 
     std::cout << std::endl;

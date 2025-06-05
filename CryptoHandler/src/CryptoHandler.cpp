@@ -304,7 +304,7 @@ int CCryptoHandler::HashBufferWithCallback(ALG_ID algId, const std::vector<BYTE>
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------
 int CCryptoHandler::EncryptBufferWithCallback(ALG_ID algId, const std::string& password, const std::vector<BYTE>& input, 
-    std::vector<BYTE>& encryptedOutput, bool* pIsRunning, long long* pElapsedTimeMSec, int* pErrorCode, 
+    std::vector<BYTE>& encryptedOutput, bool* pIsStopRequested, bool* pIsRunning, long long* pElapsedTimeMSec, int* pErrorCode,
     StartCallback start, ProgressCallback progress, CompletionCallback completion, ErrorCallback error)
 {
     auto startTime = std::chrono::steady_clock::now();
@@ -321,6 +321,7 @@ int CCryptoHandler::EncryptBufferWithCallback(ALG_ID algId, const std::string& p
     if (!hProv) {
         if (pIsRunning) *pIsRunning = false;
         if (pErrorCode) *pErrorCode = -1;
+        if (error) error(-1);
         return -1;
     }
 
@@ -329,6 +330,7 @@ int CCryptoHandler::EncryptBufferWithCallback(ALG_ID algId, const std::string& p
         CryptReleaseContext(hProv, 0);
         if (pIsRunning) *pIsRunning = false;
         if (pErrorCode) *pErrorCode = -2;
+        if (error) error(-2);
         return -2;
     }
 
@@ -352,6 +354,7 @@ int CCryptoHandler::EncryptBufferWithCallback(ALG_ID algId, const std::string& p
             CryptReleaseContext(hProv, 0);
             if (pIsRunning) *pIsRunning = false;
             if (pErrorCode) *pErrorCode = -3;
+            if (error) error(-3);
             return -3;
         }
 
@@ -361,6 +364,7 @@ int CCryptoHandler::EncryptBufferWithCallback(ALG_ID algId, const std::string& p
             CryptReleaseContext(hProv, 0);
             if (pIsRunning) *pIsRunning = false;
             if (pErrorCode) *pErrorCode = -4;
+            if (error) error(-4);
             return -4;
         }
 
@@ -368,12 +372,21 @@ int CCryptoHandler::EncryptBufferWithCallback(ALG_ID algId, const std::string& p
         totalProcessed += thisChunkSize;
 
         if (progress) progress(totalProcessed, totalInputSize);
+
+        if (pIsStopRequested && *pIsStopRequested) break;
     }
 
     CryptDestroyKey(hKey);
     CryptReleaseContext(hProv, 0);
 
     if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
+    if (pIsStopRequested && *pIsStopRequested) {
+        if (pIsRunning) *pIsRunning = false;
+        if (pErrorCode) *pErrorCode = -5;
+        if (completion) completion(-5);
+        return -5;
+    }
 
     if (pIsRunning) *pIsRunning = false;
 
@@ -384,7 +397,7 @@ int CCryptoHandler::EncryptBufferWithCallback(ALG_ID algId, const std::string& p
     return CryptoResult::Success;
 }
 
-int CCryptoHandler::DecryptBufferWithCallback(ALG_ID algId, const std::string& password, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput, bool* pIsRunning, long long* pElapsedTimeMSec, int* pErrorCode, StartCallback start, ProgressCallback progress, CompletionCallback completion, ErrorCallback error)
+int CCryptoHandler::DecryptBufferWithCallback(ALG_ID algId, const std::string& password, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput, bool* pIsStopRequested, bool* pIsRunning, long long* pElapsedTimeMSec, int* pErrorCode, StartCallback start, ProgressCallback progress, CompletionCallback completion, ErrorCallback error)
 {
     auto startTime = std::chrono::steady_clock::now();
 
@@ -439,20 +452,32 @@ int CCryptoHandler::DecryptBufferWithCallback(ALG_ID algId, const std::string& p
         totalProcessed += thisChunkSize;
 
         if (progress) progress(totalProcessed, totalInputSize);
+
+        if (pIsStopRequested && *pIsStopRequested) break;
     }
 
     CryptDestroyKey(hKey);
     CryptReleaseContext(hProv, 0);
 
     if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
+    if (pIsStopRequested && *pIsStopRequested) {
+        if (pIsRunning) *pIsRunning = false;
+        if (pErrorCode) *pErrorCode = -4;
+        if (completion) completion(-4);
+        return -4;
+    }
+
     if (pIsRunning) *pIsRunning = false;
+
     if (pErrorCode) *pErrorCode = CryptoResult::Success;
+
     if (completion) completion(CryptoResult::Success);
 
     return CryptoResult::Success;
 }
 
-int CCryptoHandler::HashBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::vector<BYTE>& outputHashBytes, std::string& outputHash, bool* pIsRunning, long long* pElapsedTimeMSec, int* pErrorCode, StartCallback start, ProgressCallback progress, CompletionCallback completion, ErrorCallback error)
+int CCryptoHandler::HashBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::vector<BYTE>& outputHashBytes, std::string& outputHash, bool* pIsStopRequested, bool* pIsRunning, long long* pElapsedTimeMSec, int* pErrorCode, StartCallback start, ProgressCallback progress, CompletionCallback completion, ErrorCallback error)
 {
     auto startTime = std::chrono::steady_clock::now();
 
@@ -497,6 +522,17 @@ int CCryptoHandler::HashBufferWithCallback(ALG_ID algId, const std::vector<BYTE>
 
         totalProcessed += thisChunkSize;
         if (progress) progress(totalProcessed, totalInputSize);
+
+        if (pIsStopRequested && *pIsStopRequested) break;
+    }
+
+    if (pIsStopRequested && *pIsStopRequested) {
+        CryptDestroyHash(hHash);
+        CryptReleaseContext(hProv, 0);
+        if (pIsRunning) *pIsRunning = false;
+        if (pErrorCode) *pErrorCode = -6;
+        if (completion) completion(-6);
+        return -6;
     }
 
     // Hash boyutu al
@@ -532,8 +568,11 @@ int CCryptoHandler::HashBufferWithCallback(ALG_ID algId, const std::vector<BYTE>
     CryptReleaseContext(hProv, 0);
 
     if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
     if (pIsRunning) *pIsRunning = false;
+
     if (pErrorCode) *pErrorCode = CryptoResult::Success;
+
     if (completion) completion(CryptoResult::Success);
 
     return CryptoResult::Success;

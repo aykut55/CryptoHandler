@@ -52,9 +52,15 @@ public:
     int DecryptBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput, const std::string& password);
     int HashBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::string& outputHash);
 
-    int EncryptBufferWithCallback(ALG_ID algId, const std::string& password, const std::vector<BYTE>& input, std::vector<BYTE>& encryptedOutput, bool* pIsRunning = NULL, long long* pElapsedTimeMSec = NULL, int* pErrorCode = NULL, StartCallback start = NULL, ProgressCallback progress = NULL, CompletionCallback completion = NULL, ErrorCallback error = NULL);
-    int DecryptBufferWithCallback(ALG_ID algId, const std::string& password, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput,bool* pIsRunning = NULL, long long* pElapsedTimeMSec = NULL, int* pErrorCode = NULL, StartCallback start = NULL, ProgressCallback progress = NULL, CompletionCallback completion = NULL, ErrorCallback error = NULL);
-    int HashBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::vector<BYTE>& outputHashBytes, std::string& outputHash, bool* pIsRunning = NULL, long long* pElapsedTimeMSec = NULL, int* pErrorCode = NULL, StartCallback start = NULL, ProgressCallback progress = NULL, CompletionCallback completion = NULL, ErrorCallback error = NULL);
+    int EncryptBufferWithCallback(ALG_ID algId, const std::string& password, const std::vector<BYTE>& input, std::vector<BYTE>& encryptedOutput, 
+        bool* pIsStopRequested = NULL, bool* pIsRunning = NULL, long long* pElapsedTimeMSec = NULL, int* pErrorCode = NULL,
+        StartCallback start = NULL, ProgressCallback progress = NULL, CompletionCallback completion = NULL, ErrorCallback error = NULL);
+    int DecryptBufferWithCallback(ALG_ID algId, const std::string& password, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput,
+        bool* pIsStopRequested = NULL, bool* pIsRunning = NULL, long long* pElapsedTimeMSec = NULL, int* pErrorCode = NULL,
+        StartCallback start = NULL, ProgressCallback progress = NULL, CompletionCallback completion = NULL, ErrorCallback error = NULL);
+    int HashBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::vector<BYTE>& outputHashBytes, std::string& outputHash, 
+        bool* pIsStopRequested = NULL, bool* pIsRunning = NULL, long long* pElapsedTimeMSec = NULL, int* pErrorCode = NULL,
+        StartCallback start = NULL, ProgressCallback progress = NULL, CompletionCallback completion = NULL, ErrorCallback error = NULL);
     
     //--------------------------------------------------------------------------------------------------------------------------------------------------
     // String operations
