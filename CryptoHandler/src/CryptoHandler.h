@@ -47,10 +47,9 @@ public:
     int DecryptBuffer(ALG_ID algId, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput, const std::string& password, bool& isRunning, long long& elapsedTimeMSec);
     int HashBuffer(ALG_ID algId, const std::vector<BYTE>& input, std::string& outputHash, bool& isRunning, long long& elapsedTimeMSec);
 
-    // Loop ile yapilacak...
-    int EncryptBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::vector<BYTE>& encryptedOutput, const std::string& password);
-    int DecryptBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput, const std::string& password);
-    int HashBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::string& outputHash);
+
+
+
 
     int EncryptBufferWithCallback(ALG_ID algId, const std::string& password, const std::vector<BYTE>& input, std::vector<BYTE>& encryptedOutput, 
         bool* pIsStopRequested = NULL, bool* pIsRunning = NULL, long long* pElapsedTimeMSec = NULL, int* pErrorCode = NULL,
@@ -139,6 +138,59 @@ public:
         AlgorithmType type;
         std::string name;
     };
+
+
+    int EncryptFileWithCallback_calismadi(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password,
+        bool* pIsStopRequested, bool* pIsRunning, long long* pElapsedTimeMSec, int* pErrorCode,
+        StartCallback start, ProgressCallback progress, CompletionCallback completion, ErrorCallback error);
+
+    int DecryptFileWithCallback_calismadi(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password,
+        bool* pIsStopRequested, bool* pIsRunning, long long* pElapsedTimeMSec, int* pErrorCode,
+        StartCallback start, ProgressCallback progress, CompletionCallback completion, ErrorCallback error);
+
+
+    int EncryptFileStreamedWithCallback(
+        ALG_ID algId,
+        const std::string& inputFile,
+        const std::string& outputFile,
+        const std::string& password,
+        bool* pIsStopRequested,
+        bool* pIsRunning,
+        long long* pElapsedTimeMSec,
+        int* pErrorCode,
+        StartCallback start,
+        ProgressCallback progress,
+        CompletionCallback completion,
+        ErrorCallback error);
+
+    int DecryptFileStreamedWithCallback(
+        ALG_ID algId,
+        const std::string& inputFile,
+        const std::string& outputFile,
+        const std::string& password,
+        bool* pIsStopRequested,
+        bool* pIsRunning,
+        long long* pElapsedTimeMSec,
+        int* pErrorCode,
+        StartCallback start,
+        ProgressCallback progress,
+        CompletionCallback completion,
+        ErrorCallback error);
+
+
+    int HashFileStreamedWithCallback(
+        ALG_ID algId,
+        const std::string& inputFile,
+        std::string& outputHash,
+        bool* pIsStopRequested,
+        bool* pIsRunning,
+        long long* pElapsedTimeMSec,
+        int* pErrorCode,
+        StartCallback start,
+        ProgressCallback progress,
+        CompletionCallback completion,
+        ErrorCallback error);
+
 
 protected:
 

@@ -287,22 +287,6 @@ int CCryptoHandler::HashBuffer(ALG_ID algId, const std::vector<BYTE>& input, std
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------
-int CCryptoHandler::EncryptBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::vector<BYTE>& encryptedOutput, const std::string& password)
-{
-    return 0;
-}
-
-int CCryptoHandler::DecryptBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& encryptedInput, std::vector<BYTE>& decryptedOutput, const std::string& password) 
-{
-    return 0;
-}
-
-int CCryptoHandler::HashBufferWithCallback(ALG_ID algId, const std::vector<BYTE>& input, std::string& outputHash)
-{
-    return 0;
-}
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------
 int CCryptoHandler::EncryptBufferWithCallback(ALG_ID algId, const std::string& password, const std::vector<BYTE>& input, 
     std::vector<BYTE>& encryptedOutput, bool* pIsStopRequested, bool* pIsRunning, long long* pElapsedTimeMSec, int* pErrorCode,
     StartCallback start, ProgressCallback progress, CompletionCallback completion, ErrorCallback error)
@@ -1343,4 +1327,451 @@ long long CCryptoHandler::GetElapsedTimeMsec(void)
     }
 
     return elapsedTimeMSec;
+}
+
+
+
+
+
+
+int CCryptoHandler::EncryptFileWithCallback_calismadi(ALG_ID algId, const std::string& inputFile, const std::string& outputFile, const std::string& password,
+    bool* pIsStopRequested, bool* pIsRunning, long long* pElapsedTimeMSec, int* pErrorCode,
+    StartCallback start, ProgressCallback progress, CompletionCallback completion, ErrorCallback error)
+{
+    auto startTime = std::chrono::steady_clock::now();
+
+    if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+    if (pIsRunning) *pIsRunning = true;
+    if (pErrorCode) *pErrorCode = CryptoResult::Success;
+    if (start) start();
+
+    // FileEnc Begin
+    std::ifstream in(inputFile, std::ios::binary | std::ios::ate);
+    if (!in) {
+        if (completion) completion(-1);
+        if (pIsRunning) *pIsRunning = false;
+        return -1;
+    }
+
+    size_t totalInputSize = static_cast<size_t>(in.tellg());
+    in.seekg(0, std::ios::beg);
+
+    const size_t chunkSize = 4096;
+    size_t totalProcessed = 0;
+
+    std::vector<BYTE> inputBuffer(chunkSize);
+    std::vector<BYTE> encryptedBuffer;
+
+    std::ofstream out(outputFile, std::ios::binary);
+    if (!out) {
+        if (completion) completion(-2);
+        if (pIsRunning) *pIsRunning = false;
+        return -2;
+    }
+
+    while (!in.eof()) {
+        if (pIsStopRequested && *pIsStopRequested) break;
+
+        in.read(reinterpret_cast<char*>(inputBuffer.data()), chunkSize);
+        std::streamsize bytesRead = in.gcount();
+
+        if (bytesRead <= 0) break;
+
+        std::vector<BYTE> actualInput(inputBuffer.begin(), inputBuffer.begin() + bytesRead);
+        encryptedBuffer.clear();
+
+        // Local state for each chunk
+        bool localIsRunning = false;
+        long long localElapsed = 0;
+        int localErrorCode = 0;
+
+        int encResult = EncryptBufferWithCallback(algId, password, actualInput, encryptedBuffer,
+            pIsStopRequested, &localIsRunning, &localElapsed, &localErrorCode,
+            nullptr, nullptr, nullptr, nullptr); // iç callback'ler burada pas geçilir
+
+        if (encResult != CryptoResult::Success) {
+            if (error) error(encResult);
+            if (completion) completion(encResult);
+            if (pIsRunning) *pIsRunning = false;
+            return encResult;
+        }
+
+        out.write(reinterpret_cast<const char*>(encryptedBuffer.data()), encryptedBuffer.size());
+        totalProcessed += static_cast<size_t>(bytesRead);
+
+        if (progress) progress(totalProcessed, totalInputSize);
+    }
+    // FileEnc End
+
+    if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+
+    if (pIsStopRequested && *pIsStopRequested) {
+        if (pIsRunning) *pIsRunning = false;
+        if (pErrorCode) *pErrorCode = -5;
+        if (completion) completion(-5);
+        return -5;
+    }
+
+    if (pIsRunning) *pIsRunning = false;
+    if (pErrorCode) *pErrorCode = CryptoResult::Success;
+    if (completion) completion(CryptoResult::Success);
+
+    return CryptoResult::Success;
+}
+
+int CCryptoHandler::DecryptFileWithCallback_calismadi(
+    ALG_ID algId,
+    const std::string& inputFile,
+    const std::string& outputFile,
+    const std::string& password,
+    bool* pIsStopRequested,
+    bool* pIsRunning,
+    long long* pElapsedTimeMSec,
+    int* pErrorCode,
+    StartCallback start,
+    ProgressCallback progress,
+    CompletionCallback completion,
+    ErrorCallback error)
+{
+    auto startTime = std::chrono::steady_clock::now();
+    if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+    if (pIsRunning) *pIsRunning = true;
+    if (pErrorCode) *pErrorCode = CryptoResult::Success;
+    if (start) start();
+
+    std::ifstream in(inputFile, std::ios::binary | std::ios::ate);
+    if (!in) {
+        if (completion) completion(-1);
+        if (pIsRunning) *pIsRunning = false;
+        return -1;
+    }
+
+    size_t totalInputSize = static_cast<size_t>(in.tellg());
+    in.seekg(0, std::ios::beg);
+
+    const size_t chunkSize = 4096;
+    size_t totalProcessed = 0;
+
+    std::vector<BYTE> inputBuffer(chunkSize + 64);
+    std::vector<BYTE> decryptedBuffer;
+
+    std::ofstream out(outputFile, std::ios::binary);
+    if (!out) {
+        if (completion) completion(-2);
+        if (pIsRunning) *pIsRunning = false;
+        return -2;
+    }
+
+    while (!in.eof()) {
+        if (pIsStopRequested && *pIsStopRequested) break;
+
+        in.read(reinterpret_cast<char*>(inputBuffer.data()), chunkSize);
+        std::streamsize bytesRead = in.gcount();
+        if (bytesRead <= 0) break;
+
+        std::vector<BYTE> actualInput(inputBuffer.begin(), inputBuffer.begin() + bytesRead);
+        decryptedBuffer.clear();
+
+        bool localIsRunning = false;
+        long long localElapsed = 0;
+        int localErrorCode = 0;
+
+        int decResult = DecryptBufferWithCallback(
+            algId, password, actualInput, decryptedBuffer,
+            pIsStopRequested, &localIsRunning, &localElapsed, &localErrorCode,
+            nullptr, nullptr, nullptr, nullptr);
+
+        if (decResult != CryptoResult::Success) {
+            if (error) error(decResult);
+            if (completion) completion(decResult);
+            if (pIsRunning) *pIsRunning = false;
+            return decResult;
+        }
+
+        out.write(reinterpret_cast<const char*>(decryptedBuffer.data()), decryptedBuffer.size());
+        totalProcessed += static_cast<size_t>(bytesRead);
+
+        if (progress) progress(totalProcessed, totalInputSize);
+    }
+
+    if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+    if (pIsStopRequested && *pIsStopRequested) {
+        if (pIsRunning) *pIsRunning = false;
+        if (pErrorCode) *pErrorCode = -5;
+        if (completion) completion(-5);
+        return -5;
+    }
+
+    if (pIsRunning) *pIsRunning = false;
+    if (pErrorCode) *pErrorCode = CryptoResult::Success;
+    if (completion) completion(CryptoResult::Success);
+
+    return CryptoResult::Success;
+}
+
+
+
+
+
+
+
+// ==== EncryptFileStreamedWithCallback ====
+int CCryptoHandler::EncryptFileStreamedWithCallback(
+    ALG_ID algId,
+    const std::string& inputFile,
+    const std::string& outputFile,
+    const std::string& password,
+    bool* pIsStopRequested,
+    bool* pIsRunning,
+    long long* pElapsedTimeMSec,
+    int* pErrorCode,
+    StartCallback start,
+    ProgressCallback progress,
+    CompletionCallback completion,
+    ErrorCallback error)
+{
+    auto startTime = std::chrono::steady_clock::now();
+    if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+    if (pIsRunning) *pIsRunning = true;
+    if (pErrorCode) *pErrorCode = CryptoResult::Success;
+    if (start) start();
+
+    HCRYPTPROV hProv = GetCryptProvider();
+    if (!hProv) {
+        if (error) error(-1);
+        if (pIsRunning) *pIsRunning = false;
+        return -1;
+    }
+    HCRYPTKEY hKey = GenerateKey(algId, hProv, password);
+    if (!hKey) {
+        CryptReleaseContext(hProv, 0);
+        if (error) error(-2);
+        if (pIsRunning) *pIsRunning = false;
+        return -2;
+    }
+
+    std::ifstream in(inputFile, std::ios::binary | std::ios::ate);
+    if (!in) {
+        if (error) error(-3);
+        if (pIsRunning) *pIsRunning = false;
+        return -3;
+    }
+    size_t totalSize = static_cast<size_t>(in.tellg());
+    in.seekg(0);
+    std::ofstream out(outputFile, std::ios::binary);
+    if (!out) {
+        if (error) error(-4);
+        if (pIsRunning) *pIsRunning = false;
+        return -4;
+    }
+
+    const size_t chunkSize = 4096;
+    std::vector<BYTE> buffer(chunkSize + 64);
+    size_t totalProcessed = 0;
+
+    while (!in.eof()) {
+        if (pIsStopRequested && *pIsStopRequested) break;
+        in.read(reinterpret_cast<char*>(buffer.data()), chunkSize);
+        DWORD bytesRead = static_cast<DWORD>(in.gcount());
+        if (bytesRead == 0) break;
+
+        BOOL isFinal = in.eof() ? TRUE : FALSE;
+        DWORD bufferLen = bytesRead;
+        DWORD bufferSize = static_cast<DWORD>(buffer.size());
+
+        if (!CryptEncrypt(hKey, 0, isFinal, 0, buffer.data(), &bufferLen, bufferSize)) {
+            CryptDestroyKey(hKey);
+            CryptReleaseContext(hProv, 0);
+            if (error) error(-5);
+            if (pIsRunning) *pIsRunning = false;
+            return -5;
+        }
+
+        out.write(reinterpret_cast<const char*>(buffer.data()), bufferLen);
+        totalProcessed += bytesRead;
+        if (progress) progress(totalProcessed, totalSize);
+    }
+
+    CryptDestroyKey(hKey);
+    CryptReleaseContext(hProv, 0);
+    if (pIsRunning) *pIsRunning = false;
+    if (completion) completion(CryptoResult::Success);
+    if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+    return CryptoResult::Success;
+}
+
+// ==== DecryptFileStreamedWithCallback ====
+int CCryptoHandler::DecryptFileStreamedWithCallback(
+    ALG_ID algId,
+    const std::string& inputFile,
+    const std::string& outputFile,
+    const std::string& password,
+    bool* pIsStopRequested,
+    bool* pIsRunning,
+    long long* pElapsedTimeMSec,
+    int* pErrorCode,
+    StartCallback start,
+    ProgressCallback progress,
+    CompletionCallback completion,
+    ErrorCallback error)
+{
+    auto startTime = std::chrono::steady_clock::now();
+    if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+    if (pIsRunning) *pIsRunning = true;
+    if (pErrorCode) *pErrorCode = CryptoResult::Success;
+    if (start) start();
+
+    HCRYPTPROV hProv = GetCryptProvider();
+    if (!hProv) {
+        if (error) error(-1);
+        if (pIsRunning) *pIsRunning = false;
+        return -1;
+    }
+    HCRYPTKEY hKey = GenerateKey(algId, hProv, password);
+    if (!hKey) {
+        CryptReleaseContext(hProv, 0);
+        if (error) error(-2);
+        if (pIsRunning) *pIsRunning = false;
+        return -2;
+    }
+
+    std::ifstream in(inputFile, std::ios::binary | std::ios::ate);
+    if (!in) {
+        if (error) error(-3);
+        if (pIsRunning) *pIsRunning = false;
+        return -3;
+    }
+    size_t totalSize = static_cast<size_t>(in.tellg());
+    in.seekg(0);
+    std::ofstream out(outputFile, std::ios::binary);
+    if (!out) {
+        if (error) error(-4);
+        if (pIsRunning) *pIsRunning = false;
+        return -4;
+    }
+
+    const size_t chunkSize = 4096;
+    std::vector<BYTE> buffer(chunkSize + 64);
+    size_t totalProcessed = 0;
+
+    while (!in.eof()) {
+        if (pIsStopRequested && *pIsStopRequested) break;
+        in.read(reinterpret_cast<char*>(buffer.data()), chunkSize);
+        DWORD bytesRead = static_cast<DWORD>(in.gcount());
+        if (bytesRead == 0) break;
+
+        BOOL isFinal = in.eof() ? TRUE : FALSE;
+        DWORD bufferLen = bytesRead;
+
+        if (!CryptDecrypt(hKey, 0, isFinal, 0, buffer.data(), &bufferLen)) {
+            CryptDestroyKey(hKey);
+            CryptReleaseContext(hProv, 0);
+            if (error) error(-5);
+            if (pIsRunning) *pIsRunning = false;
+            return -5;
+        }
+
+        out.write(reinterpret_cast<const char*>(buffer.data()), bufferLen);
+        totalProcessed += bytesRead;
+        if (progress) progress(totalProcessed, totalSize);
+    }
+
+    CryptDestroyKey(hKey);
+    CryptReleaseContext(hProv, 0);
+    if (pIsRunning) *pIsRunning = false;
+    if (completion) completion(CryptoResult::Success);
+    if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+    return CryptoResult::Success;
+}
+
+
+// ==== HashFileStreamedWithCallback ====
+int CCryptoHandler::HashFileStreamedWithCallback(
+    ALG_ID algId,
+    const std::string& inputFile,
+    std::string& outputHash,
+    bool* pIsStopRequested,
+    bool* pIsRunning,
+    long long* pElapsedTimeMSec,
+    int* pErrorCode,
+    StartCallback start,
+    ProgressCallback progress,
+    CompletionCallback completion,
+    ErrorCallback error)
+{
+    auto startTime = std::chrono::steady_clock::now();
+    if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+    if (pIsRunning) *pIsRunning = true;
+    if (pErrorCode) *pErrorCode = CryptoResult::Success;
+    if (start) start();
+
+    HCRYPTPROV hProv = GetCryptProvider();
+    if (!hProv) {
+        if (error) error(-1);
+        if (pIsRunning) *pIsRunning = false;
+        return -1;
+    }
+    HCRYPTHASH hHash = NULL;
+    if (!CryptCreateHash(hProv, algId, 0, 0, &hHash)) {
+        CryptReleaseContext(hProv, 0);
+        if (error) error(-2);
+        if (pIsRunning) *pIsRunning = false;
+        return -2;
+    }
+
+    std::ifstream in(inputFile, std::ios::binary | std::ios::ate);
+    if (!in) {
+        CryptDestroyHash(hHash);
+        CryptReleaseContext(hProv, 0);
+        if (error) error(-3);
+        if (pIsRunning) *pIsRunning = false;
+        return -3;
+    }
+    size_t totalSize = static_cast<size_t>(in.tellg());
+    in.seekg(0);
+
+    const size_t chunkSize = 4096;
+    std::vector<BYTE> buffer(chunkSize);
+    size_t totalProcessed = 0;
+
+    while (!in.eof()) {
+        if (pIsStopRequested && *pIsStopRequested) break;
+        in.read(reinterpret_cast<char*>(buffer.data()), chunkSize);
+        DWORD bytesRead = static_cast<DWORD>(in.gcount());
+        if (bytesRead == 0) break;
+
+        if (!CryptHashData(hHash, buffer.data(), bytesRead, 0)) {
+            CryptDestroyHash(hHash);
+            CryptReleaseContext(hProv, 0);
+            if (error) error(-4);
+            if (pIsRunning) *pIsRunning = false;
+            return -4;
+        }
+
+        totalProcessed += bytesRead;
+        if (progress) progress(totalProcessed, totalSize);
+    }
+
+    BYTE hash[64];
+    DWORD hashLen = sizeof(hash);
+    if (!CryptGetHashParam(hHash, HP_HASHVAL, hash, &hashLen, 0)) {
+        CryptDestroyHash(hHash);
+        CryptReleaseContext(hProv, 0);
+        if (error) error(-5);
+        if (pIsRunning) *pIsRunning = false;
+        return -5;
+    }
+
+    std::ostringstream oss;
+    for (DWORD i = 0; i < hashLen; ++i) {
+        oss << std::hex << std::setw(2) << std::setfill('0') << (int)hash[i];
+    }
+    outputHash = oss.str();
+
+    CryptDestroyHash(hHash);
+    CryptReleaseContext(hProv, 0);
+    if (pIsRunning) *pIsRunning = false;
+    if (completion) completion(CryptoResult::Success);
+    if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+    return CryptoResult::Success;
 }

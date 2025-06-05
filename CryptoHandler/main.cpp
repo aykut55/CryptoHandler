@@ -631,7 +631,13 @@ void OnProgress(size_t current, size_t total) {
 }
 
 void OnCompletion(int result) {
-    std::cout << "Completed with result: " << result << "\n";
+    //std::cout << "Completed with result: " << result << "\n";
+    if (result == 0) {
+        std::cout << "Completed with successfully.\n";
+    }
+    else {
+        std::cout << "Process terminated with result code: " << result << "\n";
+    }
 }
 
 void OnError(int errorCode) {
@@ -667,7 +673,7 @@ std::vector<BYTE> fixedData = GenerateBytes(4096, 0, 0xCC);
 std::vector<BYTE> randomData = GenerateBytes(8192, 1);
 */
 
-int main()
+int main2()
 {
     CCryptoHandler crypto;
 
@@ -924,4 +930,128 @@ int main()
     std::cout << std::endl;
     std::cout << std::endl;
     std::cout << std::endl;
+
+    return 0;
+}
+
+
+
+
+
+int main()
+{
+    CCryptoHandler crypto;
+
+    std::string password = "secret123";
+    
+    std::string inputFileName = "../input_text.txt";       // Şifrelenecek dosya
+    std::string encryptedFileName = "../encrypted.aes";
+    std::string decryptedFileName = "../decrypted.txt";
+
+    std::string inputFileHashResult = "";
+    std::string decryptedFileHashResult = "";
+
+    ALG_ID algId = CALG_AES_256;
+    ALG_ID hashAlg = CALG_SHA_256;
+
+    bool isRunning = false;
+    bool stopRequested = false;
+    long long elapsedTime = 0;
+    int errorCode = 0;
+
+    std::cout << "[*] Starting encryption process...\n";
+
+    int result = crypto.EncryptFileStreamedWithCallback(
+        algId,
+        inputFileName,
+        encryptedFileName,
+        password,
+        &stopRequested,
+        &isRunning,
+        &elapsedTime,
+        &errorCode,
+        OnStart,
+        OnProgress,
+        OnCompletion,
+        OnError
+    );
+
+    std::cout << "[*] Encryption result code: " << result << "\n";
+    std::cout << "[*] Elapsed time: " << elapsedTime << " ms\n";
+
+    isRunning = false;
+    stopRequested = false;
+    elapsedTime = 0;
+    errorCode = 0;
+
+    std::cout << "[*] Starting decryption process...\n";
+
+    result = crypto.DecryptFileStreamedWithCallback(
+        algId,
+        encryptedFileName,
+        decryptedFileName,
+        password,
+        &stopRequested,
+        &isRunning,
+        &elapsedTime,
+        &errorCode,
+        OnStart,
+        OnProgress,
+        OnCompletion,
+        OnError
+    );
+
+    std::cout << "[*] Decryption result code: " << result << "\n";
+    std::cout << "[*] Elapsed time: " << elapsedTime << " ms\n";
+
+
+    std::cout << "[*] Calculating hash...\n";
+
+    result = crypto.HashFileStreamedWithCallback(
+        hashAlg,
+        inputFileName,
+        inputFileHashResult,
+        &stopRequested,
+        &isRunning,
+        &elapsedTime,
+        &errorCode,
+        OnStart,
+        OnProgress,
+        OnCompletion,
+        OnError
+    );
+
+    std::cout << "[*] Hash result code: " << result << "\n";
+    std::cout << "[*] InputFile Hash  : " << inputFileHashResult << "\n";
+    std::cout << "[*] Elapsed time    : " << elapsedTime << " ms\n";
+
+
+    result = crypto.HashFileStreamedWithCallback(
+        hashAlg,
+        decryptedFileName,
+        decryptedFileHashResult,
+        &stopRequested,
+        &isRunning,
+        &elapsedTime,
+        &errorCode,
+        OnStart,
+        OnProgress,
+        OnCompletion,
+        OnError
+    );
+
+    std::cout << "[*] Hash result code   : " << result << "\n";
+    std::cout << "[*] DecryptedFile Hash : " << decryptedFileHashResult << "\n";
+    std::cout << "[*] Elapsed time       : " << elapsedTime << " ms\n";
+
+    std::cout << "\n";
+    std::cout << "\n";
+    std::cout << "\n";
+
+    std::cout << "[*] InputFile Hash     : " << inputFileHashResult << "\n";
+    std::cout << "[*] DecryptedFile Hash : " << decryptedFileHashResult << "\n";
+
+
+
+    return 0;
 }
