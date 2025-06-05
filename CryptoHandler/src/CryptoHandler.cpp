@@ -27,9 +27,13 @@ CCryptoHandler::~CCryptoHandler()
 {
 }
 
-CCryptoHandler::CCryptoHandler() : m_isRunning(false)
+CCryptoHandler::CCryptoHandler() 
+    : m_isRunning(false)
 {
     m_supportedAlgorithms = SUPPORTED_ALGORITHMS;
+
+    IsStartTimerCalled = false;
+    IsStopTimerCalled = false;
 }
 
 bool CCryptoHandler::IsRunning() const
@@ -1045,4 +1049,38 @@ long long CCryptoHandler::getElapsedTimeMSecUpToNow(std::chrono::time_point<std:
     auto now = std::chrono::steady_clock::now();
 
     return getElapsedTimeMSec(m_startTime, now);
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+void CCryptoHandler::StartTimer(void)
+{
+    m_startTime = std::chrono::steady_clock::now();
+    IsStartTimerCalled = true;
+    IsStopTimerCalled = false;
+}
+
+void CCryptoHandler::StopTimer(void)
+{
+    m_stopTime = std::chrono::steady_clock::now();
+    IsStopTimerCalled = true;
+}
+
+long long CCryptoHandler::GetElapsedTimeMsec(void)
+{
+    long long elapsedTimeMSec = 0;
+
+    if (IsStartTimerCalled)
+    {
+        if (IsStartTimerCalled)
+        {
+            elapsedTimeMSec = getElapsedTimeMSec(m_startTime, m_stopTime);
+        }
+        else
+        {
+            auto now = std::chrono::steady_clock::now();
+            elapsedTimeMSec = getElapsedTimeMSec(m_startTime, now);
+        }
+    }
+
+    return elapsedTimeMSec;
 }

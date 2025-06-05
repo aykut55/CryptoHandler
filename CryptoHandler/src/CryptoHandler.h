@@ -105,6 +105,13 @@ public:
     std::string BytesToString(const std::vector<BYTE>& bytes);
     std::string GetLastErrorString();
 
+
+    //--------------------------------------------------------------------------------------------------------------------------------------------------
+    // Timer functions
+    void StartTimer(void);
+    void StopTimer(void);
+    long long GetElapsedTimeMsec(void);
+
     //--------------------------------------------------------------------------------------------------------------------------------------------------
     enum AlgorithmType {
         ENCRYPTION,
@@ -135,6 +142,11 @@ private:
 
     // Status check
     bool IsRunning() const;
+
+    bool IsStartTimerCalled;
+    bool IsStopTimerCalled;
+    std::chrono::time_point<std::chrono::steady_clock> m_startTime;
+    std::chrono::time_point<std::chrono::steady_clock> m_stopTime;
 };
 
 #endif // CryptoHandlerH
