@@ -50,6 +50,8 @@ public:
 
 
 
+    // isimleri Streamed li sekilde degistirilecek...
+    // Eger butun input su sekilde tek seferde islenmis olsaydi: ve bu bir dongu olmadan yapiliyor olsaydi — bu durumda non-streamed olurdu.
 
     int EncryptBufferWithCallback(ALG_ID algId, const std::string& password, const std::vector<BYTE>& input, std::vector<BYTE>& encryptedOutput, 
         bool* pIsStopRequested = NULL, bool* pIsRunning = NULL, long long* pElapsedTimeMSec = NULL, int* pErrorCode = NULL,
@@ -190,6 +192,63 @@ public:
         ProgressCallback progress,
         CompletionCallback completion,
         ErrorCallback error);
+
+
+
+
+
+    int EncryptStringWithCallback(ALG_ID algId, const std::string& password, const std::string& input, std::string& output,
+        bool* pIsStopRequested = NULL, bool* pIsRunning = NULL, long long* pElapsedTimeMSec = NULL, int* pErrorCode = NULL,
+        StartCallback start = NULL, ProgressCallback progress = NULL, CompletionCallback completion = NULL, ErrorCallback error = NULL);
+    int DecryptStringWithCallback(ALG_ID algId, const std::string& password, const std::string& input, std::string& output,
+        bool* pIsStopRequested = NULL, bool* pIsRunning = NULL, long long* pElapsedTimeMSec = NULL, int* pErrorCode = NULL,
+        StartCallback start = NULL, ProgressCallback progress = NULL, CompletionCallback completion = NULL, ErrorCallback error = NULL);
+    int HashStringWithCallback(ALG_ID algId, const std::string& input, std::string& outputHash,
+        bool* pIsStopRequested = NULL, bool* pIsRunning = NULL, long long* pElapsedTimeMSec = NULL, int* pErrorCode = NULL,
+        StartCallback start = NULL, ProgressCallback progress = NULL, CompletionCallback completion = NULL, ErrorCallback error = NULL);
+
+
+    int EncryptStringStreamedWithCallback(
+        ALG_ID algId,
+        const std::string& password,
+        std::istream& input,
+        std::ostream& output,
+        bool* pIsStopRequested,
+        bool* pIsRunning,
+        long long* pElapsedTimeMSec,
+        int* pErrorCode,
+        StartCallback start,
+        ProgressCallback progress,
+        CompletionCallback completion,
+        ErrorCallback error);
+
+    int DecryptStringStreamedWithCallback(
+        ALG_ID algId,
+        const std::string& password,
+        std::istream& input,
+        std::ostream& output,
+        bool* pIsStopRequested,
+        bool* pIsRunning,
+        long long* pElapsedTimeMSec,
+        int* pErrorCode,
+        StartCallback start,
+        ProgressCallback progress,
+        CompletionCallback completion,
+        ErrorCallback error);
+
+    int HashStringStreamedWithCallback(
+        ALG_ID algId,
+        std::istream& input,
+        std::string& outputHash,
+        bool* pIsStopRequested,
+        bool* pIsRunning,
+        long long* pElapsedTimeMSec,
+        int* pErrorCode,
+        StartCallback start,
+        ProgressCallback progress,
+        CompletionCallback completion,
+        ErrorCallback error);
+
 
 
 protected:

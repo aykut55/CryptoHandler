@@ -1053,5 +1053,82 @@ int main()
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    std::string inputText = "Very large text simulated here. It can be megabytes in real usage...";
+    std::istringstream input(inputText);
+    std::ostringstream encrypted;
+    std::ostringstream decrypted;
+    std::string hashResult;
+
+    crypto.EncryptStringStreamedWithCallback(
+        algId,
+        password,
+        input,
+        encrypted,
+        &stopRequested,
+        &isRunning,
+        &elapsedTime,
+        &errorCode,
+        OnStart,
+        OnProgress,
+        OnCompletion,
+        OnError);
+
+    std::istringstream encryptedIn(encrypted.str());
+    crypto.DecryptStringStreamedWithCallback(
+        algId,
+        password,
+        encryptedIn,
+        decrypted,
+        &stopRequested,
+        &isRunning,
+        &elapsedTime,
+        &errorCode,
+        OnStart,
+        OnProgress,
+        OnCompletion,
+        OnError);
+
+    std::istringstream decryptedIn(decrypted.str());
+    crypto.HashStringStreamedWithCallback(
+        CALG_SHA_256,
+        decryptedIn,
+        hashResult,
+        &stopRequested,
+        &isRunning,
+        &elapsedTime,
+        &errorCode,
+        OnStart,
+        OnProgress,
+        OnCompletion,
+        OnError);
+
+
+    std::cout << "[*] InputText result: " << inputText << "\n";
+    std::cout << "[*] Decrypted result: " << decrypted.str() << "\n";
+    std::cout << "[*] Hash result: " << hashResult << "\n";
+
+
+
+
+
+
     return 0;
 }

@@ -1775,3 +1775,376 @@ int CCryptoHandler::HashFileStreamedWithCallback(
     if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
     return CryptoResult::Success;
 }
+
+
+
+
+// ==== EncryptStringStreamedWithCallback ====
+int CCryptoHandler::EncryptStringStreamedWithCallback(
+    ALG_ID algId,
+    const std::string& password,
+    std::istream& input,
+    std::ostream& output,
+    bool* pIsStopRequested,
+    bool* pIsRunning,
+    long long* pElapsedTimeMSec,
+    int* pErrorCode,
+    StartCallback start,
+    ProgressCallback progress,
+    CompletionCallback completion,
+    ErrorCallback error)
+{
+    auto startTime = std::chrono::steady_clock::now();
+    if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+    if (pIsRunning) *pIsRunning = true;
+    if (pErrorCode) *pErrorCode = CryptoResult::Success;
+    if (start) start();
+
+    HCRYPTPROV hProv = GetCryptProvider();
+    if (!hProv) {
+        if (error) error(-1);
+        if (pIsRunning) *pIsRunning = false;
+        return -1;
+    }
+    HCRYPTKEY hKey = GenerateKey(algId, hProv, password);
+    if (!hKey) {
+        CryptReleaseContext(hProv, 0);
+        if (error) error(-2);
+        if (pIsRunning) *pIsRunning = false;
+        return -2;
+    }
+
+    input.seekg(0, std::ios::end);
+    size_t totalSize = static_cast<size_t>(input.tellg());
+    input.seekg(0);
+
+    const size_t chunkSize = 4096;
+    std::vector<BYTE> buffer(chunkSize + 64);
+    size_t totalProcessed = 0;
+
+    while (!input.eof()) {
+        if (pIsStopRequested && *pIsStopRequested) break;
+        input.read(reinterpret_cast<char*>(buffer.data()), chunkSize);
+        DWORD bytesRead = static_cast<DWORD>(input.gcount());
+        if (bytesRead == 0) break;
+
+        BOOL isFinal = input.eof() ? TRUE : FALSE;
+        DWORD bufferLen = bytesRead;
+        DWORD bufferSize = static_cast<DWORD>(buffer.size());
+
+        if (!CryptEncrypt(hKey, 0, isFinal, 0, buffer.data(), &bufferLen, bufferSize)) {
+            CryptDestroyKey(hKey);
+            CryptReleaseContext(hProv, 0);
+            if (error) error(-3);
+            if (pIsRunning) *pIsRunning = false;
+            return -3;
+        }
+
+        output.write(reinterpret_cast<const char*>(buffer.data()), bufferLen);
+        totalProcessed += bytesRead;
+        if (progress) progress(totalProcessed, totalSize);
+    }
+
+    CryptDestroyKey(hKey);
+    CryptReleaseContext(hProv, 0);
+    if (pIsRunning) *pIsRunning = false;
+    if (completion) completion(CryptoResult::Success);
+    if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+    return CryptoResult::Success;
+}
+
+// ==== DecryptStringStreamedWithCallback ====
+int CCryptoHandler::DecryptStringStreamedWithCallback(
+    ALG_ID algId,
+    const std::string& password,
+    std::istream& input,
+    std::ostream& output,
+    bool* pIsStopRequested,
+    bool* pIsRunning,
+    long long* pElapsedTimeMSec,
+    int* pErrorCode,
+    StartCallback start,
+    ProgressCallback progress,
+    CompletionCallback completion,
+    ErrorCallback error)
+{
+    auto startTime = std::chrono::steady_clock::now();
+    if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+    if (pIsRunning) *pIsRunning = true;
+    if (pErrorCode) *pErrorCode = CryptoResult::Success;
+    if (start) start();
+
+    HCRYPTPROV hProv = GetCryptProvider();
+    if (!hProv) {
+        if (error) error(-1);
+        if (pIsRunning) *pIsRunning = false;
+        return -1;
+    }
+    HCRYPTKEY hKey = GenerateKey(algId, hProv, password);
+    if (!hKey) {
+        CryptReleaseContext(hProv, 0);
+        if (error) error(-2);
+        if (pIsRunning) *pIsRunning = false;
+        return -2;
+    }
+
+    input.seekg(0, std::ios::end);
+    size_t totalSize = static_cast<size_t>(input.tellg());
+    input.seekg(0);
+
+    const size_t chunkSize = 4096;
+    std::vector<BYTE> buffer(chunkSize + 64);
+    size_t totalProcessed = 0;
+
+    while (!input.eof()) {
+        if (pIsStopRequested && *pIsStopRequested) break;
+        input.read(reinterpret_cast<char*>(buffer.data()), chunkSize);
+        DWORD bytesRead = static_cast<DWORD>(input.gcount());
+        if (bytesRead == 0) break;
+
+        BOOL isFinal = input.eof() ? TRUE : FALSE;
+        DWORD bufferLen = bytesRead;
+
+        if (!CryptDecrypt(hKey, 0, isFinal, 0, buffer.data(), &bufferLen)) {
+            CryptDestroyKey(hKey);
+            CryptReleaseContext(hProv, 0);
+            if (error) error(-3);
+            if (pIsRunning) *pIsRunning = false;
+            return -3;
+        }
+
+        output.write(reinterpret_cast<const char*>(buffer.data()), bufferLen);
+        totalProcessed += bytesRead;
+        if (progress) progress(totalProcessed, totalSize);
+    }
+
+    CryptDestroyKey(hKey);
+    CryptReleaseContext(hProv, 0);
+    if (pIsRunning) *pIsRunning = false;
+    if (completion) completion(CryptoResult::Success);
+    if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+    return CryptoResult::Success;
+}
+
+// ==== HashStringStreamedWithCallback ====
+int CCryptoHandler::HashStringStreamedWithCallback(
+    ALG_ID algId,
+    std::istream& input,
+    std::string& outputHash,
+    bool* pIsStopRequested,
+    bool* pIsRunning,
+    long long* pElapsedTimeMSec,
+    int* pErrorCode,
+    StartCallback start,
+    ProgressCallback progress,
+    CompletionCallback completion,
+    ErrorCallback error)
+{
+    auto startTime = std::chrono::steady_clock::now();
+    if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+    if (pIsRunning) *pIsRunning = true;
+    if (pErrorCode) *pErrorCode = CryptoResult::Success;
+    if (start) start();
+
+    HCRYPTPROV hProv = GetCryptProvider();
+    if (!hProv) {
+        if (error) error(-1);
+        if (pIsRunning) *pIsRunning = false;
+        return -1;
+    }
+
+    HCRYPTHASH hHash;
+    if (!CryptCreateHash(hProv, algId, 0, 0, &hHash)) {
+        CryptReleaseContext(hProv, 0);
+        if (error) error(-2);
+        if (pIsRunning) *pIsRunning = false;
+        return -2;
+    }
+
+    input.seekg(0, std::ios::end);
+    size_t totalSize = static_cast<size_t>(input.tellg());
+    input.seekg(0);
+
+    const size_t chunkSize = 4096;
+    std::vector<BYTE> buffer(chunkSize);
+    size_t totalProcessed = 0;
+
+    while (!input.eof()) {
+        if (pIsStopRequested && *pIsStopRequested) break;
+        input.read(reinterpret_cast<char*>(buffer.data()), chunkSize);
+        DWORD bytesRead = static_cast<DWORD>(input.gcount());
+        if (bytesRead == 0) break;
+
+        if (!CryptHashData(hHash, buffer.data(), bytesRead, 0)) {
+            CryptDestroyHash(hHash);
+            CryptReleaseContext(hProv, 0);
+            if (error) error(-3);
+            if (pIsRunning) *pIsRunning = false;
+            return -3;
+        }
+
+        totalProcessed += bytesRead;
+        if (progress) progress(totalProcessed, totalSize);
+    }
+
+    DWORD hashLen = 0;
+    DWORD hashLenSize = sizeof(DWORD);
+    CryptGetHashParam(hHash, HP_HASHSIZE, reinterpret_cast<BYTE*>(&hashLen), &hashLenSize, 0);
+
+    std::vector<BYTE> hashBuffer(hashLen);
+    if (!CryptGetHashParam(hHash, HP_HASHVAL, hashBuffer.data(), &hashLen, 0)) {
+        CryptDestroyHash(hHash);
+        CryptReleaseContext(hProv, 0);
+        if (error) error(-4);
+        if (pIsRunning) *pIsRunning = false;
+        return -4;
+    }
+
+    std::ostringstream oss;
+    for (DWORD i = 0; i < hashLen; ++i)
+        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(hashBuffer[i]);
+
+    outputHash = oss.str();
+
+    CryptDestroyHash(hHash);
+    CryptReleaseContext(hProv, 0);
+    if (pIsRunning) *pIsRunning = false;
+    if (completion) completion(CryptoResult::Success);
+    if (pElapsedTimeMSec) *pElapsedTimeMSec = getElapsedTimeMSecUpToNow(startTime);
+    return CryptoResult::Success;
+}
+
+
+
+
+
+
+
+int CCryptoHandler::EncryptStringWithCallback(
+    ALG_ID algId,
+    const std::string& password,
+    const std::string& input,
+    std::string& output,
+    bool* pIsStopRequested,
+    bool* pIsRunning,
+    long long* pElapsedTimeMSec,
+    int* pErrorCode,
+    StartCallback start,
+    ProgressCallback progress,
+    CompletionCallback completion,
+    ErrorCallback error)
+{
+    std::vector<BYTE> inputBuffer(input.begin(), input.end());
+    std::vector<BYTE> encryptedBuffer;
+
+    int result = EncryptBufferWithCallback(
+        algId,
+        password,
+        inputBuffer,
+        encryptedBuffer,
+        pIsStopRequested,
+        pIsRunning,
+        pElapsedTimeMSec,
+        pErrorCode,
+        start,
+        progress,
+        completion,
+        error
+    );
+
+    if (result == CryptoResult::Success) {
+        output.assign(encryptedBuffer.begin(), encryptedBuffer.end());
+    }
+    else {
+        output.clear();
+    }
+
+    return result;
+}
+
+
+int CCryptoHandler::DecryptStringWithCallback(
+    ALG_ID algId,
+    const std::string& password,
+    const std::string& input,
+    std::string& output,
+    bool* pIsStopRequested,
+    bool* pIsRunning,
+    long long* pElapsedTimeMSec,
+    int* pErrorCode,
+    StartCallback start,
+    ProgressCallback progress,
+    CompletionCallback completion,
+    ErrorCallback error)
+{
+    std::vector<BYTE> inputBuffer(input.begin(), input.end());
+    std::vector<BYTE> decryptedBuffer;
+
+    int result = DecryptBufferWithCallback(
+        algId,
+        password,
+        inputBuffer,
+        decryptedBuffer,
+        pIsStopRequested,
+        pIsRunning,
+        pElapsedTimeMSec,
+        pErrorCode,
+        start,
+        progress,
+        completion,
+        error
+    );
+
+    if (result == CryptoResult::Success) {
+        output.assign(decryptedBuffer.begin(), decryptedBuffer.end());
+    }
+    else {
+        output.clear();
+    }
+
+    return result;
+}
+
+
+
+int CCryptoHandler::HashStringWithCallback(
+    ALG_ID algId,
+    const std::string& input,
+    std::string& outputHash,
+    bool* pIsStopRequested,
+    bool* pIsRunning,
+    long long* pElapsedTimeMSec,
+    int* pErrorCode,
+    StartCallback start,
+    ProgressCallback progress,
+    CompletionCallback completion,
+    ErrorCallback error)
+{
+    // String'i byte buffer'a dönüştür
+    std::vector<BYTE> inputBuffer(input.begin(), input.end());
+
+    std::vector<BYTE> outputHashBytes;
+
+    // Hash hesapla
+    int result = HashBufferWithCallback(
+        algId,
+        inputBuffer,
+        outputHashBytes,
+        outputHash,
+        pIsStopRequested,
+        pIsRunning,
+        pElapsedTimeMSec,
+        pErrorCode,
+        start,
+        progress,
+        completion,
+        error
+    );
+
+    if (result != CryptoResult::Success) {
+        outputHashBytes.clear();
+        outputHash.clear();
+    }
+
+    return result;
+}
