@@ -627,7 +627,7 @@ void OnStart() {
 }
 
 void OnProgress(size_t current, size_t total) {
-    std::cout << "Progress: " << current << " / " << total << "\n";
+    std::cout << "Progress: " << current << " / " << total << "\r";
 }
 
 void OnCompletion(int result) {
@@ -953,12 +953,15 @@ int main()
 
     ALG_ID algId = CALG_AES_256;
     ALG_ID hashAlg = CALG_SHA_256;
+    ALG_ID cryptoAlgId = CALG_AES_256;
+    ALG_ID hashAlgId = CALG_SHA_256;
 
     bool isRunning = false;
     bool stopRequested = false;
     long long elapsedTime = 0;
     int errorCode = 0;
 
+#if 0
     std::cout << "[*] Starting encryption process...\n";
 
     int result = crypto.EncryptFileStreamedWithCallback(
@@ -1124,6 +1127,235 @@ int main()
     std::cout << "[*] InputText result: " << inputText << "\n";
     std::cout << "[*] Decrypted result: " << decrypted.str() << "\n";
     std::cout << "[*] Hash result: " << hashResult << "\n";
+
+
+
+
+
+
+
+    isRunning = false;
+    stopRequested = false;
+    elapsedTime = 0;
+    errorCode = 0;
+
+    std::cout << "[*] Starting encryption in thread...\n";
+
+    result = crypto.EncryptFileStreamedWithCallbackThread(
+        algId,
+        inputFileName,
+        encryptedFileName,
+        password,
+        &stopRequested,
+        &isRunning,
+        &elapsedTime,
+        &errorCode,
+        OnStart,
+        OnProgress,
+        OnCompletion,
+        OnError
+    );
+
+    std::cout << "[*] Thread finished, result code: " << result << "\n";
+    std::cout << "[*] Elapsed time: " << elapsedTime << " ms\n";
+
+    isRunning = false;
+    stopRequested = false;
+    elapsedTime = 0;
+    errorCode = 0;
+
+    std::cout << "[*] Starting decryption process...\n";
+
+    result = crypto.DecryptFileStreamedWithCallbackThread(
+        algId,
+        encryptedFileName,
+        decryptedFileName,
+        password,
+        &stopRequested,
+        &isRunning,
+        &elapsedTime,
+        &errorCode,
+        OnStart,
+        OnProgress,
+        OnCompletion,
+        OnError
+    );
+
+    std::cout << "[*] Decryption result code: " << result << "\n";
+    std::cout << "[*] Elapsed time: " << elapsedTime << " ms\n";
+
+
+    isRunning = false;
+    stopRequested = false;
+    elapsedTime = 0;
+    errorCode = 0;
+
+
+    std::cout << "[*] Calculating hash...\n";
+
+    result = crypto.HashFileStreamedWithCallbackThread(
+        hashAlg,
+        inputFileName,
+        inputFileHashResult,
+        &stopRequested,
+        &isRunning,
+        &elapsedTime,
+        &errorCode,
+        OnStart,
+        OnProgress,
+        OnCompletion,
+        OnError
+    );
+
+    std::cout << "[*] Hash result code: " << result << "\n";
+    std::cout << "[*] InputFile Hash  : " << inputFileHashResult << "\n";
+    std::cout << "[*] Elapsed time    : " << elapsedTime << " ms\n";
+
+    isRunning = false;
+    stopRequested = false;
+    elapsedTime = 0;
+    errorCode = 0;
+
+
+#endif
+
+
+
+    std::string inputText = "Very large text simulated here. It can be megabytes in real usage...";
+    std::istringstream input1(inputText);
+    std::ostringstream encrypted;
+    std::ostringstream decrypted;
+    std::string hashResult;
+
+    crypto.EncryptStringStreamedWithCallbackThread(
+        algId,
+        password,
+        input1,
+        encrypted,
+        &stopRequested,
+        &isRunning,
+        &elapsedTime,
+        &errorCode,
+        OnStart,
+        OnProgress,
+        OnCompletion,
+        OnError);
+
+    std::istringstream encryptedIn1(encrypted.str());
+    crypto.DecryptStringStreamedWithCallbackThread(
+        algId,
+        password,
+        encryptedIn1,
+        decrypted,
+        &stopRequested,
+        &isRunning,
+        &elapsedTime,
+        &errorCode,
+        OnStart,
+        OnProgress,
+        OnCompletion,
+        OnError);
+
+    std::istringstream decryptedIn1(decrypted.str());
+    crypto.HashStringStreamedWithCallbackThread(
+        CALG_SHA_256,
+        decryptedIn1,
+        hashResult,
+        &stopRequested,
+        &isRunning,
+        &elapsedTime,
+        &errorCode,
+        OnStart,
+        OnProgress,
+        OnCompletion,
+        OnError);
+
+
+    std::cout << "[*] InputText result: " << inputText << "\n";
+    std::cout << "[*] Decrypted result: " << decrypted.str() << "\n";
+    //std::cout << "[*] Hash result: " << hashResult << "\n";
+
+    isRunning = false;
+    stopRequested = false;
+    elapsedTime = 0;
+    errorCode = 0;
+
+
+
+
+    std::string inputString = "Hello, this is a test message to encrypt, decrypt and hash!";
+
+    std::vector<BYTE> inputData(inputString.begin(), inputString.end());
+    std::vector<BYTE> encryptedData;
+    std::vector<BYTE> decryptedData;
+    std::vector<BYTE> outputData;
+    std::string outputString = "";
+
+    std::vector<BYTE> hashData;
+    std::string hashString = "";
+
+
+
+
+
+#if 1
+    std::cout << "\n== EncryptBufferWithCallbackThread ==\n";
+    crypto.EncryptBufferWithCallbackThread(
+        algId,
+        password,
+        inputData,
+        encryptedData,
+        &stopRequested,
+        &isRunning,
+        &elapsedTime,
+        &errorCode,
+        OnStart,
+        OnProgress,
+        OnCompletion,
+        OnError);
+
+    std::cout << "\n== DecryptBufferWithCallbackThread ==\n";
+    crypto.DecryptBufferWithCallbackThread(
+        algId,
+        password,
+        encryptedData,
+        decryptedData,
+        &stopRequested,
+        &isRunning,
+        &elapsedTime,
+        &errorCode,
+        OnStart,
+        OnProgress,
+        OnCompletion,
+        OnError);
+
+    std::string result(decryptedData.begin(), decryptedData.end());
+    std::cout << "Decrypted result: " << result << "\n";
+
+    std::cout << "\n== HashBufferWithCallbackThread ==\n";
+    crypto.HashBufferWithCallbackThread(
+        hashAlgId,
+        inputData,
+        hashData,
+        hashString,
+        &stopRequested,
+        &isRunning,
+        &elapsedTime,
+        &errorCode,
+        OnStart,
+        OnProgress,
+        OnCompletion,
+        OnError);
+
+    std::cout << "Input Hash: " << hashString << "\n";
+
+#endif
+
+
+
+
+
+
 
 
 

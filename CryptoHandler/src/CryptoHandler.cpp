@@ -2148,3 +2148,346 @@ int CCryptoHandler::HashStringWithCallback(
 
     return result;
 }
+
+
+
+int CCryptoHandler::EncryptFileStreamedWithCallbackThread(
+    ALG_ID algId,
+    const std::string& inputFile,
+    const std::string& outputFile,
+    const std::string& password,
+    bool* pIsStopRequested,
+    bool* pIsRunning,
+    long long* pElapsedTimeMSec,
+    int* pErrorCode,
+    StartCallback start,
+    ProgressCallback progress,
+    CompletionCallback completion,
+    ErrorCallback error)
+{
+    int result = 0;
+
+    std::thread t([&]() {
+        result = EncryptFileStreamedWithCallback(
+            algId,
+            inputFile,
+            outputFile,
+            password,
+            pIsStopRequested,
+            pIsRunning,
+            pElapsedTimeMSec,
+            pErrorCode,
+            start,
+            progress,
+            completion,
+            error
+        );
+        });
+    //  t.detach();
+    t.join();
+
+    return result;
+}
+
+
+int CCryptoHandler::DecryptFileStreamedWithCallbackThread(
+    ALG_ID algId,
+    const std::string& inputFile,
+    const std::string& outputFile,
+    const std::string& password,
+    bool* pIsStopRequested,
+    bool* pIsRunning,
+    long long* pElapsedTimeMSec,
+    int* pErrorCode,
+    StartCallback start,
+    ProgressCallback progress,
+    CompletionCallback completion,
+    ErrorCallback error)
+{
+    int result = 0;
+
+    std::thread t([&]() {
+        result = DecryptFileStreamedWithCallback(
+            algId,
+            inputFile,
+            outputFile,
+            password,
+            pIsStopRequested,
+            pIsRunning,
+            pElapsedTimeMSec,
+            pErrorCode,
+            start,
+            progress,
+            completion,
+            error
+        );
+        });
+    //  t.detach();
+    t.join();
+    return result;
+}
+
+
+int CCryptoHandler::HashFileStreamedWithCallbackThread(
+    ALG_ID algId,
+    const std::string& inputFile,
+    std::string& outputHash,
+    bool* pIsStopRequested,
+    bool* pIsRunning,
+    long long* pElapsedTimeMSec,
+    int* pErrorCode,
+    StartCallback start,
+    ProgressCallback progress,
+    CompletionCallback completion,
+    ErrorCallback error)
+{
+    int result = 0;
+
+    std::thread t([&]() {
+        result = HashFileStreamedWithCallback(
+            algId,
+            inputFile,
+            outputHash,
+            pIsStopRequested,
+            pIsRunning,
+            pElapsedTimeMSec,
+            pErrorCode,
+            start,
+            progress,
+            completion,
+            error
+        );
+        });
+//  t.detach();
+    t.join();
+    return result;
+}
+
+
+
+int CCryptoHandler::EncryptStringStreamedWithCallbackThread(
+    ALG_ID algId,
+    const std::string& password,
+    std::istream& input,
+    std::ostream& output,
+    bool* pIsStopRequested,
+    bool* pIsRunning,
+    long long* pElapsedTimeMSec,
+    int* pErrorCode,
+    StartCallback start,
+    ProgressCallback progress,
+    CompletionCallback completion,
+    ErrorCallback error)
+{
+    int result = 0;
+
+    std::thread t([&]() {
+        result = EncryptStringStreamedWithCallback(
+            algId,
+            password,
+            input,
+            output,
+            pIsStopRequested,
+            pIsRunning,
+            pElapsedTimeMSec,
+            pErrorCode,
+            start,
+            progress,
+            completion,
+            error
+        );
+        });
+//  t.detach();
+    t.join();
+    return result;
+}
+
+int CCryptoHandler::DecryptStringStreamedWithCallbackThread(
+    ALG_ID algId,
+    const std::string& password,
+    std::istream& input,
+    std::ostream& output,
+    bool* pIsStopRequested,
+    bool* pIsRunning,
+    long long* pElapsedTimeMSec,
+    int* pErrorCode,
+    StartCallback start,
+    ProgressCallback progress,
+    CompletionCallback completion,
+    ErrorCallback error)
+{
+    int result = 0;
+
+    std::thread t([&]() {
+        result = DecryptStringStreamedWithCallback(
+            algId,
+            password,
+            input,
+            output,
+            pIsStopRequested,
+            pIsRunning,
+            pElapsedTimeMSec,
+            pErrorCode,
+            start,
+            progress,
+            completion,
+            error
+        );
+        });
+//  t.detach();
+    t.join();
+    return result;
+}
+
+
+
+int CCryptoHandler::HashStringStreamedWithCallbackThread(
+    ALG_ID algId,
+    std::istream& input,
+    std::string& outputHash,
+    bool* pIsStopRequested,
+    bool* pIsRunning,
+    long long* pElapsedTimeMSec,
+    int* pErrorCode,
+    StartCallback start,
+    ProgressCallback progress,
+    CompletionCallback completion,
+    ErrorCallback error)
+{
+    int result = 0;
+
+    std::thread t([&]() {
+        result = HashStringStreamedWithCallback(
+            algId,
+            input,
+            outputHash,
+            pIsStopRequested,
+            pIsRunning,
+            pElapsedTimeMSec,
+            pErrorCode,
+            start,
+            progress,
+            completion,
+            error
+        );
+        });
+//  t.detach();
+    t.join();
+    return result;
+}
+
+
+int CCryptoHandler::EncryptBufferWithCallbackThread(
+    ALG_ID algId,
+    const std::string& password,
+    const std::vector<BYTE>& input,
+    std::vector<BYTE>& encryptedOutput,
+    bool* pIsStopRequested,
+    bool* pIsRunning,
+    long long* pElapsedTimeMSec,
+    int* pErrorCode,
+    StartCallback start,
+    ProgressCallback progress,
+    CompletionCallback completion,
+    ErrorCallback error)
+{
+    int result = 0;
+
+    std::thread t([&]() {
+        result = EncryptBufferWithCallback(
+            algId,
+            password,
+            input,
+            encryptedOutput,
+            pIsStopRequested,
+            pIsRunning,
+            pElapsedTimeMSec,
+            pErrorCode,
+            start,
+            progress,
+            completion,
+            error
+        );
+        });
+//  t.detach();
+    t.join();
+    return result;
+}
+
+
+
+int CCryptoHandler::DecryptBufferWithCallbackThread(
+    ALG_ID algId,
+    const std::string& password,
+    const std::vector<BYTE>& encryptedInput,
+    std::vector<BYTE>& decryptedOutput,
+    bool* pIsStopRequested,
+    bool* pIsRunning,
+    long long* pElapsedTimeMSec,
+    int* pErrorCode,
+    StartCallback start,
+    ProgressCallback progress,
+    CompletionCallback completion,
+    ErrorCallback error)
+{
+    int result = 0;
+
+    std::thread t([&]() {
+        result = DecryptBufferWithCallback(
+            algId,
+            password,
+            encryptedInput,
+            decryptedOutput,
+            pIsStopRequested,
+            pIsRunning,
+            pElapsedTimeMSec,
+            pErrorCode,
+            start,
+            progress,
+            completion,
+            error
+        );
+        });
+//  t.detach();
+    t.join();
+    return result;
+}
+
+
+
+int CCryptoHandler::HashBufferWithCallbackThread(
+    ALG_ID algId,
+    const std::vector<BYTE>& input,
+    std::vector<BYTE>& outputHashBytes,
+    std::string& outputHash,
+    bool* pIsStopRequested,
+    bool* pIsRunning,
+    long long* pElapsedTimeMSec,
+    int* pErrorCode,
+    StartCallback start,
+    ProgressCallback progress,
+    CompletionCallback completion,
+    ErrorCallback error)
+{
+    int result = 0;
+
+    std::thread t([&]() {
+        result = HashBufferWithCallback(
+            algId,
+            input,
+            outputHashBytes,
+            outputHash,
+            pIsStopRequested,
+            pIsRunning,
+            pElapsedTimeMSec,
+            pErrorCode,
+            start,
+            progress,
+            completion,
+            error
+        );
+    });
+//  t.detach();
+    t.join();
+    return result;
+}

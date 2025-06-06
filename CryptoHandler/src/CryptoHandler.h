@@ -251,6 +251,134 @@ public:
 
 
 
+    int  EncryptFileStreamedWithCallbackThread(
+        ALG_ID algId,
+        const std::string& inputFile,
+        const std::string& outputFile,
+        const std::string& password,
+        bool* pIsStopRequested,
+        bool* pIsRunning,
+        long long* pElapsedTimeMSec,
+        int* pErrorCode,
+        StartCallback start,
+        ProgressCallback progress,
+        CompletionCallback completion,
+        ErrorCallback error);
+
+    int DecryptFileStreamedWithCallbackThread(
+        ALG_ID algId,
+        const std::string& inputFile,
+        const std::string& outputFile,
+        const std::string& password,
+        bool* pIsStopRequested,
+        bool* pIsRunning,
+        long long* pElapsedTimeMSec,
+        int* pErrorCode,
+        StartCallback start,
+        ProgressCallback progress,
+        CompletionCallback completion,
+        ErrorCallback error);
+
+    int HashFileStreamedWithCallbackThread(
+        ALG_ID algId,
+        const std::string& inputFile,
+        std::string& outputHash,
+        bool* pIsStopRequested,
+        bool* pIsRunning,
+        long long* pElapsedTimeMSec,
+        int* pErrorCode,
+        StartCallback start,
+        ProgressCallback progress,
+        CompletionCallback completion,
+        ErrorCallback error);
+
+
+
+    int EncryptStringStreamedWithCallbackThread(
+        ALG_ID algId,
+        const std::string& password,
+        std::istream& input,
+        std::ostream& output,
+        bool* pIsStopRequested,
+        bool* pIsRunning,
+        long long* pElapsedTimeMSec,
+        int* pErrorCode,
+        StartCallback start,
+        ProgressCallback progress,
+        CompletionCallback completion,
+        ErrorCallback error);
+
+
+    int DecryptStringStreamedWithCallbackThread(
+        ALG_ID algId,
+        const std::string& password,
+        std::istream& input,
+        std::ostream& output,
+        bool* pIsStopRequested,
+        bool* pIsRunning,
+        long long* pElapsedTimeMSec,
+        int* pErrorCode,
+        StartCallback start,
+        ProgressCallback progress,
+        CompletionCallback completion,
+        ErrorCallback error);
+
+    int HashStringStreamedWithCallbackThread(
+        ALG_ID algId,
+        std::istream& input,
+        std::string& outputHash,
+        bool* pIsStopRequested,
+        bool* pIsRunning,
+        long long* pElapsedTimeMSec,
+        int* pErrorCode,
+        StartCallback start,
+        ProgressCallback progress,
+        CompletionCallback completion,
+        ErrorCallback error);
+
+
+    int EncryptBufferWithCallbackThread(
+        ALG_ID algId,
+        const std::string& password,
+        const std::vector<BYTE>& input,
+        std::vector<BYTE>& encryptedOutput,
+        bool* pIsStopRequested,
+        bool* pIsRunning,
+        long long* pElapsedTimeMSec,
+        int* pErrorCode,
+        StartCallback start,
+        ProgressCallback progress,
+        CompletionCallback completion,
+        ErrorCallback error);
+
+    int DecryptBufferWithCallbackThread(
+        ALG_ID algId,
+        const std::string& password,
+        const std::vector<BYTE>& encryptedInput,
+        std::vector<BYTE>& decryptedOutput,
+        bool* pIsStopRequested,
+        bool* pIsRunning,
+        long long* pElapsedTimeMSec,
+        int* pErrorCode,
+        StartCallback start,
+        ProgressCallback progress,
+        CompletionCallback completion,
+        ErrorCallback error);
+
+    int HashBufferWithCallbackThread(
+        ALG_ID algId,
+        const std::vector<BYTE>& input,
+        std::vector<BYTE>& outputHashBytes,
+        std::string& outputHash,
+        bool* pIsStopRequested,
+        bool* pIsRunning,
+        long long* pElapsedTimeMSec,
+        int* pErrorCode,
+        StartCallback start,
+        ProgressCallback progress,
+        CompletionCallback completion,
+        ErrorCallback error);
+
 protected:
 
 private:
