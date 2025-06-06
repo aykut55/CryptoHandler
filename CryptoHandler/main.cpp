@@ -673,6 +673,113 @@ std::vector<BYTE> fixedData = GenerateBytes(4096, 0, 0xCC);
 std::vector<BYTE> randomData = GenerateBytes(8192, 1);
 */
 
+std::string GenerateString(int length, int flag = 0, char fillChar = 'A')
+{
+    std::string result;
+
+    if (length <= 0) return result;
+
+    result.resize(length);
+
+    if (flag == 0) {
+        // Sabit karakterle doldur
+        std::fill(result.begin(), result.end(), fillChar);
+    }
+    else {
+        // Rastgele karakterlerle doldur (ASCII: 32-126)
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<int> dist(32, 126); // Görülebilir karakter aralığı
+
+        for (int i = 0; i < length; ++i) {
+            result[i] = static_cast<char>(dist(gen));
+        }
+    }
+
+    return result;
+}
+
+
+/*
+    // Sabit karakterle dolu string üret
+    std::string fixedString = GenerateString(50, 0, 'X');
+    std::cout << "[Fixed]  " << fixedString << "\n";
+
+    // Rastgele karakterlerle dolu string üret
+    std::string randomString = GenerateString(50, 1);
+    std::cout << "[Random] " << randomString << "\n";
+*/
+
+
+std::string GetCurrentTimestamp()
+{
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+    std::tm tmStruct;
+#if defined(_WIN32)
+    localtime_s(&tmStruct, &now_c);
+#else
+    localtime_r(&now_c, &tmStruct);
+#endif
+    std::ostringstream oss;
+    oss << std::put_time(&tmStruct, "%Y-%m-%d %H:%M:%S");
+    return oss.str();
+}
+
+std::string GenerateFile(const std::string& filename, int fileSizeInBytes, const std::string& firstLine)
+{
+    if (fileSizeInBytes <= 0) return "";
+
+    std::ofstream outFile(filename, std::ios::binary);
+    if (!outFile) {
+        std::cerr << "[-] Cannot create file: " << filename << "\n";
+        return "";
+    }
+
+    size_t totalWritten = 0;
+
+    // İlk satır: input olarak verilen veri
+    std::string line = firstLine + "\n";
+    size_t len = line.size();
+    if (len > static_cast<size_t>(fileSizeInBytes)) {
+        outFile.write(line.data(), fileSizeInBytes); // sadece sığan kadar yaz
+        return filename;
+    }
+
+    outFile.write(line.data(), len);
+    totalWritten += len;
+
+    // Kalan alanı zaman damgası satırlarıyla doldur
+    while (totalWritten < static_cast<size_t>(fileSizeInBytes)) {
+        std::string timestamp = GetCurrentTimestamp() + "\n";
+        size_t tsLen = timestamp.size();
+
+        if (totalWritten + tsLen > static_cast<size_t>(fileSizeInBytes)) {
+            size_t remaining = fileSizeInBytes - totalWritten;
+            outFile.write(timestamp.data(), remaining);
+            break;
+        }
+
+        outFile.write(timestamp.data(), tsLen);
+        totalWritten += tsLen;
+    }
+
+    outFile.close();
+    return filename;
+}
+
+/*
+    std::string filename = "timestamp_input_file.txt";
+    std::string firstLine = "This is the header line!";
+    int fileSize = 1024; // 1 KB
+
+    std::string created = GenerateFile(filename, fileSize, firstLine);
+    if (!created.empty())
+        std::cout << "[+] File created: " << created << "\n";
+*/
+
+
+
 int main2()
 {
     CCryptoHandler crypto;
